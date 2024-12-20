@@ -22,21 +22,24 @@ class GameManager {
             const message = JSON.parse(data.toString());
             if (message.type === Message_1.INIT_GAME) {
                 if (this.pendingUser) {
+                    console.log(this.pendingUser);
                     //start the game
                     const game = new Game_1.Game(this.pendingUser, socket);
                     this.games.push(game);
+                    console.log("game initailised");
+                    this.pendingUser = null;
                 }
                 else {
                     this.pendingUser = socket;
                 }
             }
             if (message.type === Message_1.MOVE) {
-                console.log(this.users);
+                // console.log(this.users);
                 // console.log(socket);
                 const game = this.games.find((game) => game.player1 === socket || game.player2 === socket);
                 if (game) {
                     console.log("inside game");
-                    game.makeMove(socket, message.move);
+                    game.makeMove(socket, message.payload);
                 }
             }
         });
