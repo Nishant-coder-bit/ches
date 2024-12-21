@@ -12,14 +12,22 @@
   "description": "",
   "dependencies": {
     "@prisma/client": "^6.1.0",
+    "@types/express": "^5.0.0",
     "@types/ioredis": "^4.28.10",
     "@types/ws": "^8.5.13",
     "chess.js": "^1.0.0-beta.8",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "ioredis": "^5.4.2",
+    "jsonwebtoken": "^9.0.2",
     "typescript": "^5.7.2",
     "url": "^0.11.4",
     "ws": "^8.18.0"
   },
   "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/jsonwebtoken": "^9.0.7",
     "prisma": "^6.1.0"
   }
 }

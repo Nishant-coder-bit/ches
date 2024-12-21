@@ -14,9 +14,9 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Game = void 0;
 const chess_js_1 = require("chess.js");
-const Message_1 = require("./Message");
 const client_1 = require("@prisma/client");
-const RedisClient_1 = __importDefault(require("./RedisClient"));
+const RedisClient_1 = __importDefault(require("../utils/RedisClient"));
+const Message_1 = require("../utils/Message");
 const client = new client_1.PrismaClient();
 class Game {
     constructor(player1, player2) {
@@ -65,7 +65,6 @@ class Game {
     }
     makeMove(socket, move) {
         return __awaiter(this, void 0, void 0, function* () {
-            console.log("inside make move");
             //validate type of move using zod
             if (this.moveCount % 2 === 0 && socket != this.player1) {
                 console.log("early return");
@@ -76,14 +75,19 @@ class Game {
                 return;
             }
             try {
-                this.board.move(move)
+                this.board.move(move);
                 this.broadcastMove(move);
                 //push move to redis queue
                 yield RedisClient_1.default.rpush(`game:${this.gameId}:queue`, JSON.stringify({ move, fen: this.board.fen(), pgn: this.board.pgn() }));
             }
             catch (e) {
                 console.log("Invalid Move", e);
-                socket.send({})
+                socket.send(JSON.stringify({
+                    type: 'invalid_move',
+                    payload: {
+                        move: move
+                    }
+                }));
                 return;
             }
             if (this.board.isGameOver()) {

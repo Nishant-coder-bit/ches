@@ -9,7 +9,8 @@ datasource db {
 model User {
   id               Int      @id @default(autoincrement())
   name             String
-  email            String   @unique
+  email            String  @unique
+  password         String    @default("")
   gamesAsPlayer1   Game[]   @relation("Player1Games")
   gamesAsPlayer2   Game[]   @relation("Player2Games")
   gamesAsWinner    Game[]   @relation("WinnerGames")
@@ -19,8 +20,8 @@ model User {
 
 
 model Game {
- id String @id @default(uuid()) 
-  createdAt DateTime @default(now())
+ id     String @id @default(uuid()) 
+  createdAt  DateTime @default(now())
   player1  User   @relation("Player1Games", fields: [player1Id], references: [id])
   player1Id Int
   player2  User   @relation("Player2Games", fields: [player2Id], references: [id])
@@ -45,3 +46,11 @@ model Friend {
 
   @@map("friends") // Maps this model to the "friends" table in PostgreSQL
 }
+model Participant {
+  id          Int      @id @default(autoincrement())
+  gameId      String
+  userEmail   String
+  createdAt   DateTime @default(now())
+  @@unique([gameId, userEmail])
+}
+
