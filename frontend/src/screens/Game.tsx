@@ -3,6 +3,7 @@ import Chessboard from "chessboardjsx";
 import { Chess } from "chess.js"; // For handling chess logic
 import { useSocket } from "../hooks/useSocket";
 import { useLocation } from "react-router-dom";
+import axios from "axios";
 export const INIT_GAME = "init_game";
 export const INVALID_MOVE = "invalid_move";
 export const MOVE = "move";
@@ -13,12 +14,30 @@ export const Game = () => {
   const [started,setStarted] = useState(false);
   const location = useLocation();
   const [history, setHistory] = useState<string[]>([]);
+  const [games,setGames] = useState<any>([]);
    const queryParams = new URLSearchParams(location.search); 
    const email = queryParams.get('email');
    console.log("fetching email and passing to socket",email);
   const socket = useSocket({email});
-  useEffect(() => {
+ async function getAllGames(){
+  const token = localStorage.getItem('token'); 
+  console.log(token);
+  if (!token) { 
+    throw new Error('No token found'); 
+
+  } // Set the Authorization header 
+  const response = await axios.get("http://localhost:8080/user/userGameInfo", 
+    {
+       headers: { 
+        'authorization': `Bearer ${token}`
+       }
+    }); 
+    console.log("games ", response.data);
+     setGames(response.data);
+  }
+  useEffect(  () => {
     if (!socket) return;
+      getAllGames();
     socket.onmessage = (event) => {
       const message = JSON.parse(event.data);
       console.log("message",message);
@@ -77,6 +96,7 @@ export const Game = () => {
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col md:flex-row">
+
       {/* Chessboard Area */}
       <div className="flex flex-col items-center justify-center md:w-3/4 p-6">
         <h1 className="text-3xl font-bold text-gray-800 mb-4">Chess Game</h1>
