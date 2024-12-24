@@ -75,6 +75,8 @@ class Game {
                 return;
             }
             try {
+                console.log("------------------");
+                console.log("move", move);
                 this.board.move(move);
                 this.broadcastMove(move);
                 //push move to redis queue

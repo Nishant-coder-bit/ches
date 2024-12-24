@@ -29,6 +29,8 @@ class RedisClient {
     }
     rpush(key, value) {
         return __awaiter(this, void 0, void 0, function* () {
+            console.log("key-------->", key);
+            console.log("value---------------->", value);
             yield this.client.rpush(key, value);
         });
     }

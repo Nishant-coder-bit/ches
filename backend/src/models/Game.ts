@@ -34,6 +34,7 @@ export class Game {
       console.log(4);
       const game = await client.game.create({
         data: {
+
           player1Id: player1Id,
           player2Id: player2Id,
           moves: this.board.pgn(), // `this.board` is now initialized.
@@ -72,7 +73,9 @@ export class Game {
       return;
     }
     try {
-      this.board.move(move);
+      console.log("------------------");
+      console.log("move",move);
+      this.board.move(move); 
       this.broadcastMove(move);
 
       //push move to redis queue

@@ -68,6 +68,8 @@ class GameManager {
                             id: true,
                         },
                     });
+                    console.log("player1Id", player1Id);
+                    console.log("--------------------");
                     const player2Id = yield client.user.findUnique({
                         where: {
                             email: this.pendingUser._userEmail,
@@ -76,6 +78,7 @@ class GameManager {
                             id: true,
                         },
                     });
+                    console.log("player2Id", player2Id);
                     const game = yield Game_1.Game.create(this.pendingUser, socket, player1Id === null || player1Id === void 0 ? void 0 : player1Id.id, player2Id === null || player2Id === void 0 ? void 0 : player2Id.id);
                     this.games.push(game);
                     yield webSocketHandler.addParticipant, (game.gameId, this.pendingUser);
@@ -89,11 +92,13 @@ class GameManager {
                 }
             }
             if (message.type === Message_1.MOVE) {
-                // console.log(this.users);
+                console.log(this.users);
                 // console.log(socket);
                 const game = this.games.find((game) => game.player1 === socket || game.player2 === socket);
                 if (game) {
                     console.log("inside game");
+                    console.log("----------------------");
+                    console.log("game inside move ", game);
                     game.makeMove(socket, message.payload);
                 }
             }

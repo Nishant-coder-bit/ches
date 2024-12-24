@@ -8,6 +8,7 @@ import { GameManager } from './GameManager';
 import { PrismaClient } from '@prisma/client';
 import { URL } from 'url';
 import cors from "cors"
+import QueueWorker from './utils/QueueWorker';
 dotenv.config();
 
 const client = new PrismaClient();
@@ -36,7 +37,9 @@ server.on('upgrade', (request, socket, head) => {
 // WebSocket Connection Handler
 wss.on('connection', async function connection(ws, req:any) {
   await client.$connect();
-
+  //after connect to database 
+  // start processing the redis queue
+  QueueWorker;
   // Parse the URL to get parameters
   const parameters = new URL(req.url, `http://${req.headers.host}`);
   const email = parameters.searchParams.get('email');

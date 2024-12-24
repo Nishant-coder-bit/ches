@@ -16,6 +16,8 @@ class RedisClient {
   }
 
   async rpush(key: string, value: string): Promise<void> {
+     console.log("key-------->",key);
+     console.log("value---------------->",value);  
     await this.client.rpush(key, value);
   }
 

@@ -21,6 +21,7 @@ const GameManager_1 = require("./GameManager");
 const client_1 = require("@prisma/client");
 const url_1 = require("url");
 const cors_1 = __importDefault(require("cors"));
+const QueueWorker_1 = __importDefault(require("./utils/QueueWorker"));
 dotenv_1.default.config();
 const client = new client_1.PrismaClient();
 const app = (0, express_1.default)();
@@ -45,6 +46,9 @@ server.on('upgrade', (request, socket, head) => {
 wss.on('connection', function connection(ws, req) {
     return __awaiter(this, void 0, void 0, function* () {
         yield client.$connect();
+        //after connect to database 
+        // start processing the redis queue
+        QueueWorker_1.default;
         // Parse the URL to get parameters
         const parameters = new url_1.URL(req.url, `http://${req.headers.host}`);
         const email = parameters.searchParams.get('email');

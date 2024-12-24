@@ -27,8 +27,8 @@ export const userController = {
   },
   async signupUser(req:Request,res:Response){
     //add zod validation here
-      const name = req.body.name;
-      const email = req.body.email;
+      const name = req.body.name.toString();
+      const email = req.body.email.toString();
       const password = req.body.password;
       console.log("request reached to signup endpoint");
       try{
@@ -50,7 +50,7 @@ export const userController = {
       }
   },
  async loginUser(req:Request,res:Response){
-      const email = req.body.email;
+      const email = req.body.email.toString();
       const password = req.body.password;
       const existingUser = await client.user.findFirst({
           where:{

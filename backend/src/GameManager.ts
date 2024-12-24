@@ -64,6 +64,9 @@ export class GameManager {
               id: true,
             },
           });
+          console.log("player1Id", player1Id);
+          console.log("--------------------");
+        
           const player2Id = await client.user.findUnique({
             where: {
               email:  (this.pendingUser as any)._userEmail,
@@ -72,6 +75,7 @@ export class GameManager {
               id: true,
             },
           });
+            console.log("player2Id",player2Id);
 
           const game =await Game.create(this.pendingUser, socket, player1Id?.id, player2Id?.id);
           this.games.push( game);
@@ -86,13 +90,15 @@ export class GameManager {
       }
 
       if (message.type === MOVE) {
-        // console.log(this.users);
+        console.log(this.users);
         // console.log(socket);
         const game = this.games.find(
           (game) => game.player1 === socket || game.player2 === socket
         );
         if (game) {
           console.log("inside game");
+          console.log("----------------------");
+          console.log("game inside move ", game);
           game.makeMove(socket, message.payload);
         }
       }
