@@ -10,7 +10,7 @@ import { URL } from 'url';
 import cors from "cors"
 import QueueWorker from './utils/QueueWorker';
 dotenv.config();
-
+import jwt from 'jsonwebtoken';
 const client = new PrismaClient();
 const app = express();
 app.use(express.json());
@@ -38,20 +38,34 @@ server.on('upgrade', (request, socket, head) => {
 wss.on('connection', async function connection(ws, req:any) {
   await client.$connect();
   //after connect to database 
-  // start processing the redis queue
-  QueueWorker;
-  // Parse the URL to get parameters
-  const parameters = new URL(req.url, `http://${req.headers.host}`);
-  const email = parameters.searchParams.get('email');
-  
-  // Attach email to the WebSocket object
-  (ws as any)._userEmail = email;
 
-  // Add user to the game manager
-  gameManager.addUser(ws);
+  const token = req.headers.authorization?.split(' ')[1]; 
+  try {
+    const payload = jwt.verify(token, "12345"); // Verify token
+    //@ts-ignore
+    const id = payload.id;
+     const email = await client.user.findUnique({
+      where: {
+        id: id,
+      },
+      select: {
+        email: true,
+      },
+    });
+    (ws as any)._userEmail = email; // Attach email to WebSocket object
+    await client.$connect(); // Connect to Prisma
+      // start processing the redis queue
+    QueueWorker; // Process Redis queue
 
-  ws.on('close', () => {
-    gameManager.removeUser(ws);
-  });
+    gameManager.addUser(ws); // Add user to game manager
+
+    ws.on('close', () => {
+      gameManager.removeUser(ws);
+    });
+  }
+    catch (err) {
+      console.error('Invalid WebSocket token', err);
+      ws.close(); // Close WebSocket if token is invalid
+    }
 });
 

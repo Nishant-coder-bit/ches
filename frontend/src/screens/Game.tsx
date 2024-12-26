@@ -69,6 +69,8 @@ export const Game = () => {
         case INIT_GAME:
           setStarted(true);
           setPlayerColor(message.color);
+          setFen(message.payload.fen);
+          setMovesState(JSON.parse(message.payload.moves));
           console.log("started after init",started);
           console.log("game initialized");
           console.log("game started",started);

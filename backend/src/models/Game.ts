@@ -26,7 +26,7 @@ export class Game {
   ): Promise<Game> {
     const game = new Game(player1, player2);
     await game.initializeGameData(player1Id, player2Id);
-    game.initializeGame();
+    // game.initializeGame();
     return game;
   }
   private async initializeGameData(player1Id: number, player2Id: number) {
@@ -44,17 +44,19 @@ export class Game {
       console.log(5);
       console.log("game", game);
       this.gameId = game.id;
-      this.initializeGame();
+      this.initializeGame(player1Id, player2Id,game.id);
     } catch (error) {
       console.error("Error initializing game data:", error);
     }
   }
-  private initializeGame() {
+  private initializeGame(player1Id: number, player2Id: number,id:string) {
     this.player1.send(JSON.stringify({ type: INIT_GAME, color: "white" }));
     this.player2.send(JSON.stringify({ type: INIT_GAME, color: "black" }));
     console.log(6);
     RedisClient.set(`game:${this.gameId}`, JSON.stringify(this.board.fen()));
     console.log(7);
+    RedisClient.set(`user:${player1Id}:game`, id);
+    RedisClient.set(`user:${player2Id}:game`, id);
   }
   public async makeMove(
     socket: WebSocket,
@@ -63,6 +65,12 @@ export class Game {
       to: string;
     }
   ) {
+    if (this.gameId) {
+      await RedisClient.set(`game:${this.gameId}`, JSON.stringify({
+        fen: this.board.fen(),
+        moves: this.board.pgn(),
+      })); // Update game state in Redis
+    }
     //validate type of move using zod
     if (this.moveCount % 2 === 0 && socket != this.player1) {
       console.log("early return");

@@ -3,6 +3,7 @@ import { INIT_GAME, JOIN_SPECTATOR, MOVE } from "./utils/Message";
 import {  PrismaClient, User } from "@prisma/client";
 import { Game } from "./models/Game";
 import { WebSocketHandler } from "./utils/WebSocketHandler";
+import RedisClient from "./utils/RedisClient";
 const client = new PrismaClient();
 const webSocketHandler = new WebSocketHandler();
 export class GameManager {
@@ -19,6 +20,15 @@ export class GameManager {
 
   async addUser(socket: WebSocket) {
     this.users.push(socket);
+    const email = (socket as any)._userEmail;
+  
+    const gameId = await RedisClient.get(`user:${email}:game`); // Check if user has an active game
+    if (gameId) {
+      const gameState = await RedisClient.get(`game:${gameId}`);
+      if (gameState) {
+        socket.send(JSON.stringify({ type: INIT_GAME, payload: JSON.parse(gameState) })); // Send restored state
+      }
+    }
     await this.recoverGames(socket);
     this.addHandler(socket);
   }
@@ -44,6 +54,8 @@ export class GameManager {
       (game) => game.player1 !== socket && game.player2 !== socket
     );
     //remove the user
+    const email = (socket as any)._userEmail;
+    RedisClient.del(`user:${email}:game`); 
   }
   private addHandler(socket: WebSocket) {
     socket.on("message", async (data) => {

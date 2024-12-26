@@ -1,4 +1,4 @@
-import { useState } from "react";
+
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import "./App.css";
 import { LandingPage } from "./screens/LandingPage";
@@ -7,7 +7,7 @@ import Login from "./components/Login";
 import Signup from "./components/Signup";
 
 function App() {
-  const [count, setCount] = useState(0);
+
   return (
     <BrowserRouter>
       <Routes>

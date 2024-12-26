@@ -6,24 +6,25 @@ export const useSocket = (email:any) => {
     
    
   useEffect(() => {
+    const token = localStorage.getItem('token'); // Get token from localStorage
+    if (token) {
+      const ws = new WebSocket(`${WS_URL}`, ['Authorization', `Bearer ${token}`]); // Include token in headers
+      ws.onopen = () => {
+        console.log('WebSocket connected');
     
-      console.log("email",email.email);
-    const ws = new WebSocket(`${WS_URL}?email="${email.email}"`);
-    console.log("ws",ws);
-      
-    ws.onopen = () => {
-      setSocket(ws);
-      // count++;
-    };
+         setSocket(ws);
+      };
+    
+      ws.onclose = () => {
+        setSocket(null);
+      };
+    
+      return () => {
+        ws.close();
+      };
+    
+    }
 
-    ws.onclose = () => {
-      setSocket(null);
-    };
-
-    return () => {
-      ws.close();
-    };
-  },[]);
-
+  }, []);
   return socket;
-};
+}
