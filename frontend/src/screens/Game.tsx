@@ -1,15 +1,25 @@
-import React, { useEffect, useState } from "react";
+import  { useEffect, useState } from "react";
 import Chessboard from "chessboardjsx";
 import { Chess } from "chess.js"; // For handling chess logic
 import { useSocket } from "../hooks/useSocket";
 import { useLocation } from "react-router-dom";
 import axios from "axios";
+import { MoveState } from "../components/MoveState";
 
 export const INIT_GAME = "init_game";
 export const INVALID_MOVE = "invalid_move";
 export const MOVE = "move";
 export const GAME_OVER = "game_over";
-
+type Move = {
+  fen: string;
+  pgn: string;
+  move: any;
+};
+type moves = {
+  from:string,
+  to:string
+}
+const movesArray:moves[] = [];
 export const Game = () => {
   const [game] = useState(new Chess());
   const [fen, setFen] = useState("start"); // FEN string to represent the board
@@ -17,7 +27,8 @@ export const Game = () => {
   const [history, setHistory] = useState<string[]>([]);
   const [games, setGames] = useState<any[]>([]);
   const [boardKey, setBoardKey] = useState(0); // Key to force re-render
-  
+  const [movesState, setMovesState] = useState<moves[]>([]);
+  const [playerColor, setPlayerColor] = useState("white");
   const location = useLocation();
   const queryParams = new URLSearchParams(location.search);
   const email = queryParams.get("email");
@@ -57,11 +68,15 @@ export const Game = () => {
       switch (message.type) {
         case INIT_GAME:
           setStarted(true);
+          setPlayerColor(message.color);
+          console.log("started after init",started);
           console.log("game initialized");
+          console.log("game started",started);
           break;
         case MOVE:
           const move = message.payload;
           game.move(move);
+        
           setHistory((prevHistory) => [...prevHistory, game.fen()]); // Update history
           setFen(game.fen());
           console.log("move made");
@@ -86,7 +101,7 @@ export const Game = () => {
   }, [socket, game, history]);
 
   // Function to handle moves
-  const handleMove = (move: { from: string; to: string }) => {
+  const handleMove = (move: { from: any; to: any }) => {
 //      socket?.send(JSON.stringify({
 //     type:"move",
 //     payload:{
@@ -96,10 +111,25 @@ export const Game = () => {
 //     }
 //  }))   
   try{
+    const color = game.get(move.from);
+    let newcolor = "";
+    const gameColor = game.turn();
+      gameColor === "w"? newcolor = "white":newcolor = "black";
+      console.log("game color",gameColor);
+      console.log("player color",playerColor);
+      console.log("color",color);
+    if(newcolor!== playerColor){
+      console.log("not allowed wrong color player ")
+      return ;
+    }
     const result = game.move({
       from: move.from,
       to: move.to,
     });
+    
+    movesArray.push(move);
+    setMovesState(movesArray);
+    console.log("movesArray",movesArray);
     socket?.send(JSON.stringify({
       type:"move",
       payload:{
@@ -145,6 +175,7 @@ export const Game = () => {
         {!started && (
           <button
             onClick={() => {
+              console.log("started",started);
               socket?.send(
                 JSON.stringify({
                   type: INIT_GAME,
@@ -156,6 +187,11 @@ export const Game = () => {
           >
             Play
           </button>
+        )}
+        {/*moves section*/}
+
+        {started && (
+            <MoveState movesState={movesState}/>
         )}
       </div>
     </div>

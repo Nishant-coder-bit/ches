@@ -57,8 +57,8 @@ class Game {
         });
     }
     initializeGame() {
-        this.player1.send(JSON.stringify({ type: "INIT_GAME", color: "white" }));
-        this.player2.send(JSON.stringify({ type: "INIT_GAME", color: "black" }));
+        this.player1.send(JSON.stringify({ type: Message_1.INIT_GAME, color: "white" }));
+        this.player2.send(JSON.stringify({ type: Message_1.INIT_GAME, color: "black" }));
         console.log(6);
         RedisClient_1.default.set(`game:${this.gameId}`, JSON.stringify(this.board.fen()));
         console.log(7);

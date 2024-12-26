@@ -2,7 +2,7 @@ import { Chess } from "chess.js";
 import { WebSocket } from "ws";
 import { PrismaClient, User } from "@prisma/client";
 import RedisClient from "../utils/RedisClient";
-import { GAME_OVER, INVALID_MOVE, MOVE } from "../utils/Message";
+import { GAME_OVER, INIT_GAME, INVALID_MOVE, MOVE } from "../utils/Message";
 const client = new PrismaClient();
 export class Game {
   public player1: WebSocket;
@@ -50,8 +50,8 @@ export class Game {
     }
   }
   private initializeGame() {
-    this.player1.send(JSON.stringify({ type: "INIT_GAME", color: "white" }));
-    this.player2.send(JSON.stringify({ type: "INIT_GAME", color: "black" }));
+    this.player1.send(JSON.stringify({ type: INIT_GAME, color: "white" }));
+    this.player2.send(JSON.stringify({ type: INIT_GAME, color: "black" }));
     console.log(6);
     RedisClient.set(`game:${this.gameId}`, JSON.stringify(this.board.fen()));
     console.log(7);
