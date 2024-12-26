@@ -7,6 +7,7 @@ export const UserMiddleware = (req:Request,res:Response,next:NextFunction)=>{
     const decoded = jwt.verify(token as string,"12345");
 
  
+    console.log("decoded",decoded);
     if(decoded){
         //@ts-ignore
         req.userId = decoded.id;

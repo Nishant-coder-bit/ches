@@ -36,6 +36,7 @@ exports.userController = {
             try {
                 //@ts-ignore
                 const id = req.userId;
+                console.log("user id request reaching here", id);
                 const games = yield userService_1.userService.getUserGames(id);
                 res.json(games);
             }
@@ -47,8 +48,8 @@ exports.userController = {
     signupUser(req, res) {
         return __awaiter(this, void 0, void 0, function* () {
             //add zod validation here
-            const name = req.body.name.toString();
-            const email = req.body.email.toString();
+            const name = req.body.name;
+            const email = req.body.email;
             const password = req.body.password;
             console.log("request reached to signup endpoint");
             try {
@@ -73,7 +74,7 @@ exports.userController = {
     },
     loginUser(req, res) {
         return __awaiter(this, void 0, void 0, function* () {
-            const email = req.body.email.toString();
+            const email = req.body.email;
             const password = req.body.password;
             const existingUser = yield client.user.findFirst({
                 where: {

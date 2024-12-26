@@ -60,9 +60,13 @@ class GameManager {
                     //start the game
                     console.log("(socket as any)._userEmail", socket._userEmail);
                     console.log("(this.pendingUser as any)._userEmail", this.pendingUser._userEmail);
+                    const player1Email = socket._userEmail.replace(/^"|"$/g, '');
+                    ;
+                    const player2Email = this.pendingUser._userEmail.replace(/^"|"$/g, '');
+                    ;
                     const player1Id = yield client.user.findUnique({
                         where: {
-                            email: socket._userEmail,
+                            email: player1Email,
                         },
                         select: {
                             id: true,
@@ -72,7 +76,7 @@ class GameManager {
                     console.log("--------------------");
                     const player2Id = yield client.user.findUnique({
                         where: {
-                            email: this.pendingUser._userEmail,
+                            email: player2Email,
                         },
                         select: {
                             id: true,

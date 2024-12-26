@@ -8,12 +8,31 @@ export const userService = {
   },
 
   async getUserGames(id: number) {
-    const user = await prisma.user.findUnique({ where: { id } });
-    if (!user) {
-      throw new Error('User not found');
-    }
-    const gamesAsPlayer1 = await prisma.game.findMany({ where: { player1Id: user.id } });
-    const gamesAsPlayer2 = await prisma.game.findMany({ where: { player2Id: user.id } });
+    console.log("reached inside get user games");
+     console.log(typeof(id));
+
+    const user = await prisma.user.findFirst({ 
+      where: { 
+        id :id
+      } ,
+      select:{
+        name:true,
+        id:true,
+      }
+      
+    });
+    console.log("user info", user);
+    // if (!user) {
+    //   throw new Error('User not found');
+    // }
+ 
+    const gamesAsPlayer1 = await prisma.game.findMany({ where: { player1Id: id } });
+    console.log("games as player 1", gamesAsPlayer1);
+  
+    const gamesAsPlayer2 = await prisma.game.findMany({ where: { player2Id: id } });
+    console.log("games as player 2", gamesAsPlayer2);
+    console.log("games as player 1 and 2", [...gamesAsPlayer1, ...gamesAsPlayer2]);
+
     return [...gamesAsPlayer1, ...gamesAsPlayer2];
   },
 };

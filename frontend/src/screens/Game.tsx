@@ -30,14 +30,22 @@ export const Game = () => {
     if (!token) {
       throw new Error("No token found");
     }
-    // Set the Authorization header
-    const response = await axios.get("http://localhost:8080/user/userGameInfo", {
-      headers: {
-        authorization: `Bearer ${token}`,
-      },
-    });
+
+    try{
+        // Set the Authorization header
+      const response = await axios.get("http://localhost:8080/user/userGameInfo", {
+        headers: {
+          authorization: `Bearer ${token}`,
+        },
+      });
+        
     console.log("games ", response.data);
     setGames(response.data);
+    }catch(e){
+      console.log("error in fetching games",e);
+    }
+  
+ 
   }
 
   useEffect(() => {
