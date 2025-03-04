@@ -10,6 +10,8 @@ export const INIT_GAME = "init_game";
 export const INVALID_MOVE = "invalid_move";
 export const MOVE = "move";
 export const GAME_OVER = "game_over";
+
+
 type Move = {
   fen: string;
   pgn: string;
@@ -19,7 +21,13 @@ type moves = {
   from:string,
   to:string
 }
+type User = {
+  name:string,
+  email:string
+}
 const movesArray:moves[] = [];
+
+
 export const Game = () => {
   const [game] = useState(new Chess());
   const [fen, setFen] = useState("start"); // FEN string to represent the board
@@ -30,14 +38,38 @@ export const Game = () => {
   const [movesState, setMovesState] = useState<moves[]>([]);
   const [playerColor, setPlayerColor] = useState("white");
   const location = useLocation();
-  const queryParams = new URLSearchParams(location.search);
-  const email = queryParams.get("email");
-  console.log("fetching email and passing to socket", email);
-  const socket = useSocket({ email });
+   const [user,setUser] = useState<User>();
+
+   console.log("getting user inside game page",user);  
+
+
+  const socket = useSocket();
+  
+  async function getUserInfo() {
+     const token = localStorage.getItem("token");
+     if(!token){
+       throw new Error("No token found");
+       // return to login page and refresh the background
+     }
+     try{
+        const response = await axios.get("http://localhost:8080/user/userInfo", {
+          headers: {
+            authorization: `Bearer ${token}`,
+          },
+        });
+        console.log("user info", response.data);
+
+        setUser(response.data);
+
+     }
+      catch(e){
+        console.log("error in fetching user info",e);
+      }
+  }
+
 
   async function getAllGames() {
     const token = localStorage.getItem("token");
-    console.log(token);
     if (!token) {
       throw new Error("No token found");
     }
@@ -61,9 +93,10 @@ export const Game = () => {
 
   useEffect(() => {
     if (!socket) return;
+    getUserInfo();// to get the name and email based on login token from database directly
     getAllGames();
     socket.onmessage = (event) => {
-      const message = JSON.parse(event.data);
+      const message = JSON.parse(event.data.toString());
       console.log("message", message);
       switch (message.type) {
         case INIT_GAME:

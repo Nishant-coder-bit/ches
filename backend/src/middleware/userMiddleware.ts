@@ -10,7 +10,7 @@ export const UserMiddleware = (req:Request,res:Response,next:NextFunction)=>{
     console.log("decoded",decoded);
     if(decoded){
         //@ts-ignore
-        req.userId = decoded.id;
+        req.userEmail = decoded.id;
         next();
     }else{
         res.status(403).json({

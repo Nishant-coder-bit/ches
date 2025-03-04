@@ -31,7 +31,7 @@ export class Game {
   }
   private async initializeGameData(player1Id: number, player2Id: number) {
     try {
-      console.log(4);
+      console.log("inside Game Class constructor") 
       const game = await client.game.create({
         data: {
 
@@ -41,8 +41,7 @@ export class Game {
           fen: this.board.fen(),
         },
       });
-      console.log(5);
-      console.log("game", game);
+      console.log(`Game is created between ${player1Id}  and ${player2Id}`, game);
       this.gameId = game.id;
       this.initializeGame(player1Id, player2Id,game.id);
     } catch (error) {
@@ -52,9 +51,8 @@ export class Game {
   private initializeGame(player1Id: number, player2Id: number,id:string) {
     this.player1.send(JSON.stringify({ type: INIT_GAME, color: "white" }));
     this.player2.send(JSON.stringify({ type: INIT_GAME, color: "black" }));
-    console.log(6);
+    console.log("inside initialize game method")
     RedisClient.set(`game:${this.gameId}`, JSON.stringify(this.board.fen()));
-    console.log(7);
     RedisClient.set(`user:${player1Id}:game`, id);
     RedisClient.set(`user:${player2Id}:game`, id);
   }

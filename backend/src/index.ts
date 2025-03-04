@@ -11,8 +11,10 @@ import cors from "cors"
 import QueueWorker from './utils/QueueWorker';
 dotenv.config();
 import jwt from 'jsonwebtoken';
-const client = new PrismaClient();
+
 const app = express();
+const client = new PrismaClient();
+
 app.use(express.json());
 app.use(cors());
 const port = process.env.PORT || 8080;
@@ -34,29 +36,39 @@ server.on('upgrade', (request, socket, head) => {
   });
 });
 
-// WebSocket Connection Handler
+
 wss.on('connection', async function connection(ws, req:any) {
   await client.$connect();
-  //after connect to database 
+ 
+  const url = new URL(req.url, `http://${req.headers.host}`);
+  const token = url.searchParams.get('token'); // Extract token using searchParams
 
-  const token = req.headers.authorization?.split(' ')[1]; 
+  console.log("inside server token", token);
+
   try {
-    const payload = jwt.verify(token, "12345"); // Verify token
+    let payload:any;
+    if(token){
+       payload = jwt.verify(token, "12345");
+    }
+   // Verify token
+    console.log("payload",payload);
     //@ts-ignore
-    const id = payload.id;
-     const email = await client.user.findUnique({
-      where: {
-        id: id,
-      },
-      select: {
-        email: true,
-      },
-    });
-    (ws as any)._userEmail = email; // Attach email to WebSocket object
+    const email = payload.id;
+    //  const emailObj = await client.user.findUnique({
+    //   where: {
+    //     id: id,
+    //   },
+    //   select: {
+    //     email: true,
+    //   },
+    // });
+    console.log("email",email);
+
+    (ws as any)._userEmail =email; // Attach email to WebSocket object
     await client.$connect(); // Connect to Prisma
       // start processing the redis queue
     QueueWorker; // Process Redis queue
-
+    console.log("reaching here on click of signup/login button ")
     gameManager.addUser(ws); // Add user to game manager
 
     ws.on('close', () => {

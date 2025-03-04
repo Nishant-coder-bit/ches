@@ -3,17 +3,25 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 export const userService = {
-  async getUser(id: number) {
-    return prisma.user.findUnique({ where: { id } });
+
+  async getUser(email: string) {
+    return prisma.user.findUnique(
+      { 
+        where: { 
+        email
+       } ,select:{
+         name:true,
+         email:true
+       }
+  });
   },
 
-  async getUserGames(id: number) {
+  async getUserGames(email: string) {
     console.log("reached inside get user games");
-     console.log(typeof(id));
-
+    console.log("user email", email);
     const user = await prisma.user.findFirst({ 
       where: { 
-        id :id
+        email
       } ,
       select:{
         name:true,
@@ -26,10 +34,10 @@ export const userService = {
     //   throw new Error('User not found');
     // }
  
-    const gamesAsPlayer1 = await prisma.game.findMany({ where: { player1Id: id } });
+    const gamesAsPlayer1 = await prisma.game.findMany({ where: { player1Id: user?.id} });
     console.log("games as player 1", gamesAsPlayer1);
   
-    const gamesAsPlayer2 = await prisma.game.findMany({ where: { player2Id: id } });
+    const gamesAsPlayer2 = await prisma.game.findMany({ where: { player2Id: user?.id } });
     console.log("games as player 2", gamesAsPlayer2);
     console.log("games as player 1 and 2", [...gamesAsPlayer1, ...gamesAsPlayer2]);
 

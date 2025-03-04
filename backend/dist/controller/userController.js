@@ -16,18 +16,24 @@ exports.userController = void 0;
 const userService_1 = require("../services/userService");
 const client_1 = require("@prisma/client");
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
+const Validation_1 = require("../utils/Validation");
 const client = new client_1.PrismaClient();
+// function hashedToPassword(hashedPassword: string) {
+//     const password = bcrypt
+// }
 exports.userController = {
     getUser(req, res) {
         return __awaiter(this, void 0, void 0, function* () {
             try {
                 //@ts-ignore
-                const id = req.userId;
-                const user = yield userService_1.userService.getUser(id);
+                const email = req.userEmail;
+                const user = yield userService_1.userService.getUser(email);
+                console.log("inside get user data ", user);
                 res.json(user);
             }
             catch (error) {
-                res.status(500).send('Internal Server Error');
+                console.log("error while getting user", error);
+                res.status(500).send("Internal Server Error");
             }
         });
     },
@@ -35,66 +41,86 @@ exports.userController = {
         return __awaiter(this, void 0, void 0, function* () {
             try {
                 //@ts-ignore
-                const id = req.userId;
-                console.log("user id request reaching here", id);
-                const games = yield userService_1.userService.getUserGames(id);
+                const email = req.userEmail;
+                console.log("inside getUserGame emai request reaching here", email);
+                const games = yield userService_1.userService.getUserGames(email);
                 res.json(games);
             }
             catch (error) {
-                res.status(500).send('Internal Server Error');
+                res.status(500).send("Internal Server Error");
             }
         });
     },
     signupUser(req, res) {
         return __awaiter(this, void 0, void 0, function* () {
             //add zod validation here
-            const name = req.body.name;
-            const email = req.body.email;
-            const password = req.body.password;
-            console.log("request reached to signup endpoint");
             try {
+                const validatedData = Validation_1.signupSchema.safeParse(req.body);
+                console.log("Signup Validated Data using zod", validatedData);
+                console.log("request reached to signup endpoint");
                 yield client.user.create({
                     data: {
-                        name,
-                        email,
-                        password
-                    }
+                        name: validatedData.data.name,
+                        email: validatedData.data.email,
+                        password: validatedData.data.hashedPassword,
+                    },
                 });
+                const email = validatedData.data.email;
+                const existingUser = yield client.user.findFirst({
+                    where: {
+                        email
+                    },
+                });
+                const token = jsonwebtoken_1.default.sign({
+                    id: existingUser === null || existingUser === void 0 ? void 0 : existingUser.email,
+                }, "12345");
                 res.json({
-                    message: "user signed up successfully"
+                    message: "user signed up successfully",
+                    token: token,
                 });
             }
             catch (e) {
                 console.log("error while signup", e);
                 res.status(411).json({
-                    message: "User already exists"
+                    message: "User already exists",
                 });
             }
         });
     },
     loginUser(req, res) {
         return __awaiter(this, void 0, void 0, function* () {
-            const email = req.body.email;
-            const password = req.body.password;
-            const existingUser = yield client.user.findFirst({
-                where: {
-                    email,
-                    password
+            try {
+                const email = req.body.email;
+                const password = req.body.hashedPassword;
+                console.log("email and password", email, password);
+                const existingUser = yield client.user.findFirst({
+                    where: {
+                        email
+                    },
+                });
+                // console.log("existing user", existingUser);
+                if (!existingUser) {
+                    return res.status(404).json({
+                        message: "User not found",
+                    });
                 }
-            });
-            if (existingUser) {
+                console.log("existing user", existingUser);
+                if (password !== existingUser.password) {
+                    console.log("password", password);
+                    console.log("existing user password", existingUser.password);
+                    return res.status(401).json({ message: "Invalid password" });
+                }
                 const token = jsonwebtoken_1.default.sign({
-                    id: existingUser.id
+                    id: existingUser.email,
                 }, "12345");
                 res.json({
-                    token
+                    token,
                 });
             }
-            else {
-                res.status(403).json({
-                    message: "Incorrrect credentials"
-                });
+            catch (e) {
+                console.log("error while login", e);
+                // res.status(500).send("Internal Server Error");  
             }
         });
-    }
+    },
 };

@@ -12,7 +12,7 @@ const UserMiddleware = (req, res, next) => {
     console.log("decoded", decoded);
     if (decoded) {
         //@ts-ignore
-        req.userId = decoded.id;
+        req.userEmail = decoded.id;
         next();
     }
     else {

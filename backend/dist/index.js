@@ -23,8 +23,9 @@ const url_1 = require("url");
 const cors_1 = __importDefault(require("cors"));
 const QueueWorker_1 = __importDefault(require("./utils/QueueWorker"));
 dotenv_1.default.config();
-const client = new client_1.PrismaClient();
+const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const app = (0, express_1.default)();
+const client = new client_1.PrismaClient();
 app.use(express_1.default.json());
 app.use((0, cors_1.default)());
 const port = process.env.PORT || 8080;
@@ -42,22 +43,43 @@ server.on('upgrade', (request, socket, head) => {
         wss.emit('connection', ws, request);
     });
 });
-// WebSocket Connection Handler
 wss.on('connection', function connection(ws, req) {
     return __awaiter(this, void 0, void 0, function* () {
         yield client.$connect();
-        //after connect to database 
-        // start processing the redis queue
-        QueueWorker_1.default;
-        // Parse the URL to get parameters
-        const parameters = new url_1.URL(req.url, `http://${req.headers.host}`);
-        const email = parameters.searchParams.get('email');
-        // Attach email to the WebSocket object
-        ws._userEmail = email;
-        // Add user to the game manager
-        gameManager.addUser(ws);
-        ws.on('close', () => {
-            gameManager.removeUser(ws);
-        });
+        const url = new url_1.URL(req.url, `http://${req.headers.host}`);
+        const token = url.searchParams.get('token'); // Extract token using searchParams
+        console.log("inside server token", token);
+        try {
+            let payload;
+            if (token) {
+                payload = jsonwebtoken_1.default.verify(token, "12345");
+            }
+            // Verify token
+            console.log("payload", payload);
+            //@ts-ignore
+            const email = payload.id;
+            //  const emailObj = await client.user.findUnique({
+            //   where: {
+            //     id: id,
+            //   },
+            //   select: {
+            //     email: true,
+            //   },
+            // });
+            console.log("email", email);
+            ws._userEmail = email; // Attach email to WebSocket object
+            yield client.$connect(); // Connect to Prisma
+            // start processing the redis queue
+            QueueWorker_1.default; // Process Redis queue
+            console.log("reaching here on click of play button ");
+            gameManager.addUser(ws); // Add user to game manager
+            ws.on('close', () => {
+                gameManager.removeUser(ws);
+            });
+        }
+        catch (err) {
+            console.error('Invalid WebSocket token', err);
+            ws.close(); // Close WebSocket if token is invalid
+        }
     });
 });

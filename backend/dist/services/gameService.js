@@ -11,7 +11,6 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.gameService = void 0;
 const client_1 = require("@prisma/client");
-const GameManager_1 = require("../GameManager");
 // import { WebSocketHandler } from '../WebSocketHandler';
 const prisma = new client_1.PrismaClient();
 exports.gameService = {
@@ -20,16 +19,12 @@ exports.gameService = {
             return prisma.game.findUnique({ where: { id: gameId } });
         });
     },
-    recoverGame(gameId) {
-        return __awaiter(this, void 0, void 0, function* () {
-            return prisma.game.findUnique({ where: { id: gameId } });
-        });
-    },
-    addSpectator(gameId, socket) {
-        return __awaiter(this, void 0, void 0, function* () {
-            // Placeholder for WebSocket object
-            const gameManager = new GameManager_1.GameManager();
-            yield gameManager.addSpectator(gameId, socket);
-        });
-    },
+    // async recoverGame(gameId: string) {
+    //   return prisma.game.findUnique({ where: { id: gameId } });
+    // },
+    // async addSpectator(gameId: string, socket: WebSocket) {
+    //    // Placeholder for WebSocket object
+    //   const gameManager = new GameManager();
+    //   await gameManager.addSpectator(gameId, socket);
+    // },
 };

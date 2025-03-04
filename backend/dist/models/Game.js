@@ -30,7 +30,7 @@ class Game {
         return __awaiter(this, void 0, void 0, function* () {
             const game = new Game(player1, player2);
             yield game.initializeGameData(player1Id, player2Id);
-            game.initializeGame();
+            // game.initializeGame();
             return game;
         });
     }
@@ -49,22 +49,30 @@ class Game {
                 console.log(5);
                 console.log("game", game);
                 this.gameId = game.id;
-                this.initializeGame();
+                this.initializeGame(player1Id, player2Id, game.id);
             }
             catch (error) {
                 console.error("Error initializing game data:", error);
             }
         });
     }
-    initializeGame() {
+    initializeGame(player1Id, player2Id, id) {
         this.player1.send(JSON.stringify({ type: Message_1.INIT_GAME, color: "white" }));
         this.player2.send(JSON.stringify({ type: Message_1.INIT_GAME, color: "black" }));
         console.log(6);
         RedisClient_1.default.set(`game:${this.gameId}`, JSON.stringify(this.board.fen()));
         console.log(7);
+        RedisClient_1.default.set(`user:${player1Id}:game`, id);
+        RedisClient_1.default.set(`user:${player2Id}:game`, id);
     }
     makeMove(socket, move) {
         return __awaiter(this, void 0, void 0, function* () {
+            if (this.gameId) {
+                yield RedisClient_1.default.set(`game:${this.gameId}`, JSON.stringify({
+                    fen: this.board.fen(),
+                    moves: this.board.pgn(),
+                })); // Update game state in Redis
+            }
             //validate type of move using zod
             if (this.moveCount % 2 === 0 && socket != this.player1) {
                 console.log("early return");

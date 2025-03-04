@@ -13,18 +13,25 @@ exports.userService = void 0;
 const client_1 = require("@prisma/client");
 const prisma = new client_1.PrismaClient();
 exports.userService = {
-    getUser(id) {
+    getUser(email) {
         return __awaiter(this, void 0, void 0, function* () {
-            return prisma.user.findUnique({ where: { id } });
+            return prisma.user.findUnique({
+                where: {
+                    email
+                }, select: {
+                    name: true,
+                    email: true
+                }
+            });
         });
     },
-    getUserGames(id) {
+    getUserGames(email) {
         return __awaiter(this, void 0, void 0, function* () {
             console.log("reached inside get user games");
-            console.log(typeof (id));
+            console.log("user email", email);
             const user = yield prisma.user.findFirst({
                 where: {
-                    id: id
+                    email
                 },
                 select: {
                     name: true,
@@ -35,9 +42,9 @@ exports.userService = {
             // if (!user) {
             //   throw new Error('User not found');
             // }
-            const gamesAsPlayer1 = yield prisma.game.findMany({ where: { player1Id: id } });
+            const gamesAsPlayer1 = yield prisma.game.findMany({ where: { player1Id: user === null || user === void 0 ? void 0 : user.id } });
             console.log("games as player 1", gamesAsPlayer1);
-            const gamesAsPlayer2 = yield prisma.game.findMany({ where: { player2Id: id } });
+            const gamesAsPlayer2 = yield prisma.game.findMany({ where: { player2Id: user === null || user === void 0 ? void 0 : user.id } });
             console.log("games as player 2", gamesAsPlayer2);
             console.log("games as player 1 and 2", [...gamesAsPlayer1, ...gamesAsPlayer2]);
             return [...gamesAsPlayer1, ...gamesAsPlayer2];

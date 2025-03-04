@@ -11,13 +11,13 @@ export const gameService = {
     return prisma.game.findUnique({ where: { id: gameId } });
   },
 
-  async recoverGame(gameId: string) {
-    return prisma.game.findUnique({ where: { id: gameId } });
-  },
+  // async recoverGame(gameId: string) {
+  //   return prisma.game.findUnique({ where: { id: gameId } });
+  // },
 
-  async addSpectator(gameId: string, socket: WebSocket) {
-     // Placeholder for WebSocket object
-    const gameManager = new GameManager();
-    await gameManager.addSpectator(gameId, socket);
-  },
+  // async addSpectator(gameId: string, socket: WebSocket) {
+  //    // Placeholder for WebSocket object
+  //   const gameManager = new GameManager();
+  //   await gameManager.addSpectator(gameId, socket);
+  // },
 };

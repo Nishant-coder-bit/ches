@@ -22,23 +22,7 @@ export const LandingPage = () => {
           Join millions of players worldwide. Play chess for free, improve your
           skills, and have fun!
         </p>
-        <input
-          name="email"
-          type="email"
-          placeholder="Enter your emailid"
-          onChange={(e) => {
-            setEmail(e.target.value);
-          }}
-          className="px-4 py-2 border rounded-md text-gray-800 mb-4"
-        />
-        <button
-          onClick={() => {
-            navigate(`/game?email=${email}`);
-          }}
-          className="px-6 py-3 bg-blue-600 text-white rounded-md text-lg font-medium hover:bg-blue-700 transition duration-300"
-        >
-          Play Chess
-        </button>
+   
       </div>
       {/* Right Section */}
       <div className="md:w-1/2 flex flex-col items-center p-6 bg-white shadow-lg rounded-lg">

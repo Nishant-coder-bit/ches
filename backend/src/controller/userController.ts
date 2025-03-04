@@ -1,78 +1,118 @@
-import { Request, Response } from 'express';
-import { userService } from '../services/userService';
-import { PrismaClient } from '@prisma/client';
-import jwt from "jsonwebtoken"
+import { Request, Response } from "express";
+import { userService } from "../services/userService";
+import { PrismaClient } from "@prisma/client";
+import jwt from "jsonwebtoken";
+import { signupSchema } from "../utils/Validation";
+import bcrypt from "bcryptjs";
 const client = new PrismaClient();
+// function hashedToPassword(hashedPassword: string) {
+//     const password = bcrypt
+// }
 export const userController = {
   async getUser(req: Request, res: Response) {
     try {
-        //@ts-ignore
-        const id = req.userId;
-      const user = await userService.getUser(id);
+      //@ts-ignore
+      const email = req.userEmail;
+      const user = await userService.getUser(email);
+
+      console.log("inside get user data ", user);
+
       res.json(user);
     } catch (error) {
-      res.status(500).send('Internal Server Error');
+      console.log("error while getting user", error);
+      res.status(500).send("Internal Server Error");
     }
   },
 
   async getUserGames(req: Request, res: Response) {
     try {
-        //@ts-ignore
-         const id = req.userId;
-        
-        console.log("user id request reaching here",id);
-      const games = await userService.getUserGames(id);
+      //@ts-ignore
+      const email = req.userEmail;
+
+      console.log("inside getUserGame emai request reaching here", email);
+      const games = await userService.getUserGames(email);
       res.json(games);
     } catch (error) {
-      res.status(500).send('Internal Server Error');
+      res.status(500).send("Internal Server Error");
     }
   },
-  async signupUser(req:Request,res:Response){
-    //add zod validation here
-      const name = req.body.name;
-      const email = req.body.email;
-      const password = req.body.password;
-      console.log("request reached to signup endpoint");
-      try{
-         await  client.user.create({
-            data:{
-                name,
-                email,
-                password
-            }
-         })
-         res.json({
-            message:"user signed up successfully"
-         })
-      }catch(e){
-        console.log("error while signup",e);
-        res.status(411).json({
-            message: "User already exists"
-        })
-      }
-  },
- async loginUser(req:Request,res:Response){
-      const email = req.body.email;
-      const password = req.body.password;
-      const existingUser = await client.user.findFirst({
-          where:{
-            email,
-            password
-          }
-      })
-      if(existingUser){
-        const token = jwt.sign({
-            id:existingUser.id
-        },"12345");
-        res.json({
-            token
-        })
-      }
-      else {
-        res.status(403).json({
-            message: "Incorrrect credentials"
-        })
-    }
-  }
-};
 
+  async signupUser(req: Request, res: Response) {
+    //add zod validation here
+
+    try {
+      const validatedData = signupSchema.safeParse(req.body);
+      console.log("Signup Validated Data using zod", validatedData);
+      console.log("request reached to signup endpoint");
+      await client.user.create({
+        data: {
+          name: (validatedData.data as any).name,
+          email: (validatedData.data as any).email,
+          password: (validatedData.data as any).hashedPassword,
+        },
+      });
+      const email = (validatedData.data as any).email
+      const existingUser = await client.user.findFirst({
+        where: {
+          email
+        },
+      });
+      const token = jwt.sign(
+        {
+          id: existingUser?.email,
+        },
+        "12345"
+      );
+      res.json({
+        message: "user signed up successfully",
+        token: token,
+      });
+    } catch (e) {
+      console.log("error while signup", e);
+      res.status(411).json({
+        message: "User already exists",
+      });
+    }
+  },
+
+  async loginUser(req: Request, res: Response) {
+    try{
+      const email = req.body.email;
+      const password = req.body.hashedPassword;
+      console.log("email and password", email, password);
+      const existingUser = await client.user.findFirst({
+        where: {
+          email
+        },
+      });
+      // console.log("existing user", existingUser);
+      if (!existingUser) {
+        return res.status(404).json({
+          message: "User not found",
+        });
+      }
+      console.log("existing user", existingUser);
+      if(password !== existingUser.password){
+        console.log("password", password);
+        console.log("existing user password", existingUser.password);
+        return res.status(401).json({ message: "Invalid password" });
+      }
+  
+  
+      const token = jwt.sign(
+        {
+          id: existingUser.email,
+        },
+        "12345"
+      );
+      res.json({
+        token,
+      });
+    }catch(e){
+
+      console.log("error while login", e);
+      // res.status(500).send("Internal Server Error");  
+    }
+   
+  },
+};

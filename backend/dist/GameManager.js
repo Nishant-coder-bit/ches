@@ -8,12 +8,16 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.GameManager = void 0;
 const Message_1 = require("./utils/Message");
 const client_1 = require("@prisma/client");
 const Game_1 = require("./models/Game");
 const WebSocketHandler_1 = require("./utils/WebSocketHandler");
+const RedisClient_1 = __importDefault(require("./utils/RedisClient"));
 const client = new client_1.PrismaClient();
 const webSocketHandler = new WebSocketHandler_1.WebSocketHandler();
 class GameManager {
@@ -25,22 +29,32 @@ class GameManager {
     addUser(socket) {
         return __awaiter(this, void 0, void 0, function* () {
             this.users.push(socket);
-            yield this.recoverGames(socket);
+            const email = socket._userEmail;
+            console.log("inside add user", email);
+            // const gameId = await RedisClient.get(`user:${email}:game`); // Check if user has an active game
+            // if (gameId) {
+            //   const gameState = await RedisClient.get(`game:${gameId}`);
+            //   if (gameState) {
+            //     socket.send(JSON.stringify({ type: INIT_GAME, payload: JSON.parse(gameState) })); // Send restored state
+            //   }
+            // }
+            // console.log("gameId",gameId);
+            // await this.recoverGames(socket);
             this.addHandler(socket);
         });
     }
-    recoverGames(socket) {
-        return __awaiter(this, void 0, void 0, function* () {
-            const gameId = yield this.getGameId(socket);
-            if (gameId) {
-                yield webSocketHandler.recoverParticipants(gameId, this.users);
-            }
-        });
-    }
-    getGameId(socket) {
-        const game = this.games.find((game) => game.player1 === socket || game.player2 === socket);
-        return game ? game.gameId : undefined;
-    }
+    // async recoverGames(socket: WebSocket) {
+    //   const gameId = await this.getGameId(socket);
+    //   if (gameId) {
+    //     await webSocketHandler.recoverParticipants(gameId, this.users);
+    //   }
+    // }
+    // private getGameId(socket: WebSocket): string | undefined {
+    //   const game = this.games.find(
+    //     (game) => game.player1 === socket || game.player2 === socket
+    //   );
+    //   return game ? game.gameId : undefined;
+    // }
     removeUser(socket) {
         const user = this.users.filter((user) => user !== socket);
         if (this.pendingUser === socket) {
@@ -48,6 +62,8 @@ class GameManager {
         }
         this.games = this.games.filter((game) => game.player1 !== socket && game.player2 !== socket);
         //remove the user
+        const email = socket._userEmail;
+        RedisClient_1.default.del(`user:${email}:game`);
     }
     addHandler(socket) {
         socket.on("message", (data) => __awaiter(this, void 0, void 0, function* () {
@@ -58,11 +74,13 @@ class GameManager {
                 }
                 else if (this.pendingUser) {
                     //start the game
+                    console.log("this.pendingUser", this.pendingUser);
+                    console.log("socket", socket._userEmail);
                     console.log("(socket as any)._userEmail", socket._userEmail);
                     console.log("(this.pendingUser as any)._userEmail", this.pendingUser._userEmail);
-                    const player1Email = socket._userEmail.replace(/^"|"$/g, '');
+                    const player1Email = (socket._userEmail).replace(/^"|"$/g, '');
                     ;
-                    const player2Email = this.pendingUser._userEmail.replace(/^"|"$/g, '');
+                    const player2Email = (this.pendingUser._userEmail).replace(/^"|"$/g, '');
                     ;
                     const player1Id = yield client.user.findUnique({
                         where: {
@@ -106,16 +124,11 @@ class GameManager {
                     game.makeMove(socket, message.payload);
                 }
             }
-            if (message.type === Message_1.JOIN_SPECTATOR) {
-                const gameId = message.payload.gameId;
-                yield this.addSpectator(gameId, socket);
-            }
+            // if (message.type === JOIN_SPECTATOR) {
+            //   const gameId = message.payload.gameId;
+            //   await this.addSpectator(gameId, socket);
+            // }
         }));
-    }
-    addSpectator(gameId, socket) {
-        return __awaiter(this, void 0, void 0, function* () {
-            yield webSocketHandler.addSpectator(gameId, socket);
-        });
     }
 }
 exports.GameManager = GameManager;
