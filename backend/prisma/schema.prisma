@@ -7,7 +7,7 @@ datasource db {
   url      = env("DATABASE_URL") // Set your database URL in the .env file
 }
 model User {
-  id               Int      @id @default(autoincrement())
+  id               String   @id @default(uuid())
   name             String
   email            String  @unique
   password         String    @default("")
@@ -20,14 +20,14 @@ model User {
 
 
 model Game {
- id     String @id @default(uuid()) 
+  id         String @id @default(uuid()) 
   createdAt  DateTime @default(now())
   player1  User   @relation("Player1Games", fields: [player1Id], references: [id])
-  player1Id Int
+  player1Id String
   player2  User   @relation("Player2Games", fields: [player2Id], references: [id])
-  player2Id Int
+  player2Id String
   winner   User?  @relation("WinnerGames", fields: [winnerId], references: [id])
-  winnerId Int?
+  winnerId String?
   moves String @default("") 
   fen   String @default("")
 }
@@ -35,8 +35,8 @@ model Game {
 
 model Friend {
   id        String   @id @default(uuid()) @unique
-  userId     Int 
-  friendId  Int   
+  userId     String 
+  friendId  String   
   createdAt DateTime @default(now())
 
    user     User   @relation("UserFriends", fields: [userId], references: [id])
@@ -47,7 +47,7 @@ model Friend {
   @@map("friends") // Maps this model to the "friends" table in PostgreSQL
 }
 model Participant {
-  id          Int      @id @default(autoincrement())
+  id          String      @id @default(uuid())
   gameId      String
   userEmail   String
   createdAt   DateTime @default(now())

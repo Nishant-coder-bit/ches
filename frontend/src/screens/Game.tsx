@@ -127,6 +127,11 @@ export const Game = () => {
             setBoardKey(prevKey => prevKey + 1); // Force re-render
           }
           console.log("Reverted to previous state:", previousFen);
+        case GAME_OVER:
+          console.log("game is over");
+          setFen("start");
+          setStarted(false);
+          
           break;
         case GAME_OVER:
           console.log("game is over");

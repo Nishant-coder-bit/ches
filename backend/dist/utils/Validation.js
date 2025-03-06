@@ -5,5 +5,5 @@ const zod_1 = require("zod");
 exports.signupSchema = zod_1.z.object({
     name: zod_1.z.string().min(1),
     email: zod_1.z.string().email(),
-    hashedPassword: zod_1.z.string().min(6).optional(),
+    hashedPassword: zod_1.z.string(),
 });

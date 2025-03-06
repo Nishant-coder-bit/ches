@@ -11,43 +11,73 @@ export class GameManager {
   private pendingUser: WebSocket | null;
 
   private users: WebSocket[];
-
+  private countTotalGames: number = 0;
   constructor() {
     this.games = [];
     this.pendingUser = null;
     this.users = [];
   }
+  // utility function to get id of user
+  async getIdOfUser(email:string){
+    const user = await client.user.findUnique({
+      where: { email: email },
+      select: { id: true }
+    });
+    console.log("inside getIdOfUser",user?.id);
+    return user?.id;
+  }
+
 
   async addUser(socket: WebSocket) {
     this.users.push(socket);
-    const email = (socket as any)._userEmail;
-  console.log("inside add user",email);
-    // const gameId = await RedisClient.get(`user:${email}:game`); // Check if user has an active game
-    // if (gameId) {
-    //   const gameState = await RedisClient.get(`game:${gameId}`);
-    //   if (gameState) {
-    //     socket.send(JSON.stringify({ type: INIT_GAME, payload: JSON.parse(gameState) })); // Send restored state
-    //   }
-    // }
-    // console.log("gameId",gameId);
+    const email = (socket as any)._userEmail.replace(/^"|"$/g, '');
+    console.log("inside add user",email);
+    const id = this.getIdOfUser(email);
+    console.log(`id of user is ${id}`);
+    const gameId = await RedisClient.get(`user:${id}:game`); // Check if user has an active game
+    console.log("gameId from redis client",gameId);
+    if (gameId) {
+      const gameState = await RedisClient.get(`game:${gameId}`);
+      console.log(`gameState from redis client is ${gameState}`);
+      if (gameState) {
+        // Send restored state to user
+        socket.send(JSON.stringify({ type: INIT_GAME, payload: JSON.parse(gameState) })); 
+      }
 
-    // await this.recoverGames(socket);
+     const recoveredPromise =  await this.recoverGames(gameId);
+     console.log(`recovered promise is ${recoveredPromise}`);
+      const value = await recoveredPromise.resolve();
+      console.log(`value is ${value}`);
+      if (value.done === true) {
+        console.log("game recovered");
+        return;
+      }
+    }
+     
     this.addHandler(socket);
   }
-  // async recoverGames(socket: WebSocket) {
-  //   const gameId = await this.getGameId(socket);
-  //   if (gameId) {
-  //     await webSocketHandler.recoverParticipants(gameId, this.users);
-  //   }
-  // }
-
-  // private getGameId(socket: WebSocket): string | undefined {
-  //   const game = this.games.find(
-  //     (game) => game.player1 === socket || game.player2 === socket
-  //   );
-  //   return game ? game.gameId : undefined;
-  // }
-  removeUser(socket: WebSocket) {
+  async recoverGames(gameId: string):Promise<any> {
+    console.log("inside recover games");
+    if (gameId) {
+     const returnedPromise  =   await webSocketHandler.recoverParticipants(gameId, this.users);
+     const value =await returnedPromise.resolve();
+      console.log("value",value);
+      if(value.done === true){
+        console.log("game recovered");
+        return new Promise((resolve, reject) => {
+          resolve(value); 
+        }
+        )
+      }
+      
+    }
+    return new Promise((resolve, reject) => {
+      resolve({done:false});
+    });
+  }
+  
+  async removeUser(socket: WebSocket) {
+    console.log("inside remove user");
     const user = this.users.filter((user) => user !== socket);
     if (this.pendingUser === socket) {
       this.pendingUser = null;
@@ -55,9 +85,9 @@ export class GameManager {
     this.games = this.games.filter(
       (game) => game.player1 !== socket && game.player2 !== socket
     );
-    //remove the user
-    const email = (socket as any)._userEmail;
-    RedisClient.del(`user:${email}:game`); 
+    const email = (socket as any)._userEmail.replace(/^"|"$/g, '');
+    const id = this.getIdOfUser(email);
+    RedisClient.del(`user:${id}:game`); 
   }
   
   private addHandler(socket: WebSocket) {
@@ -73,8 +103,8 @@ export class GameManager {
           console.log("(socket as any)._userEmail",(socket as any)._userEmail);
           console.log("(this.pendingUser as any)._userEmail",(this.pendingUser as any)._userEmail);
          
-          const player1Email =( (socket as any)._userEmail).replace(/^"|"$/g, '');;
-          const player2Email =( (this.pendingUser as any)._userEmail).replace(/^"|"$/g, '');;
+          const player1Email =( (socket as any)._userEmail).replace(/^"|"$/g, '');
+          const player2Email =( (this.pendingUser as any)._userEmail).replace(/^"|"$/g, '');
         
           const player1Id = await client.user.findUnique({
             where: {
@@ -100,8 +130,11 @@ export class GameManager {
 
           const game =await Game.create(this.pendingUser, socket, player1Id?.id, player2Id?.id);
           this.games.push( game);
+          console.log(`game id is ${game.gameId} and going inside addParticipant`);
           await webSocketHandler.addParticipant,(game.gameId,this.pendingUser);
           await webSocketHandler.addParticipant(game.gameId, socket);
+          this.countTotalGames += 1;
+          console.log(`total number of game running on server is ${this.countTotalGames}`);
           console.log("game initailised");
           this.pendingUser = null;
         } else {

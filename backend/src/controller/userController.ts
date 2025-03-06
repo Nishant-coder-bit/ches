@@ -5,9 +5,7 @@ import jwt from "jsonwebtoken";
 import { signupSchema } from "../utils/Validation";
 import bcrypt from "bcryptjs";
 const client = new PrismaClient();
-// function hashedToPassword(hashedPassword: string) {
-//     const password = bcrypt
-// }
+
 export const userController = {
   async getUser(req: Request, res: Response) {
     try {
@@ -41,17 +39,17 @@ export const userController = {
     //add zod validation here
 
     try {
-      const validatedData = signupSchema.safeParse(req.body);
-      console.log("Signup Validated Data using zod", validatedData);
+      // const validatedData = signupSchema.safeParse(req.body);
+      // console.log("Signup Validated Data using zod", validatedData);
       console.log("request reached to signup endpoint");
       await client.user.create({
         data: {
-          name: (validatedData.data as any).name,
-          email: (validatedData.data as any).email,
-          password: (validatedData.data as any).hashedPassword,
+          name: req.body.name,
+          email: req.body.email,
+          password: req.body.password,
         },
       });
-      const email = (validatedData.data as any).email
+      const email = (req.body).email
       const existingUser = await client.user.findFirst({
         where: {
           email
@@ -78,7 +76,7 @@ export const userController = {
   async loginUser(req: Request, res: Response) {
     try{
       const email = req.body.email;
-      const password = req.body.hashedPassword;
+      const password = req.body.password;
       console.log("email and password", email, password);
       const existingUser = await client.user.findFirst({
         where: {

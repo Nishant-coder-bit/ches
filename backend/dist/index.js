@@ -34,7 +34,6 @@ const gameManager = new GameManager_1.GameManager();
 app.use(express_1.default.json());
 app.use('/game', gameRoutes_1.default);
 app.use('/user', userRoutes_1.default);
-// Upgrade HTTP Server to Handle WebSocket Connections
 const server = app.listen(port, () => {
     console.log(`Server is running on port ${port}`);
 });
@@ -47,7 +46,7 @@ wss.on('connection', function connection(ws, req) {
     return __awaiter(this, void 0, void 0, function* () {
         yield client.$connect();
         const url = new url_1.URL(req.url, `http://${req.headers.host}`);
-        const token = url.searchParams.get('token'); // Extract token using searchParams
+        const token = url.searchParams.get('token');
         console.log("inside server token", token);
         try {
             let payload;
@@ -58,28 +57,18 @@ wss.on('connection', function connection(ws, req) {
             console.log("payload", payload);
             //@ts-ignore
             const email = payload.id;
-            //  const emailObj = await client.user.findUnique({
-            //   where: {
-            //     id: id,
-            //   },
-            //   select: {
-            //     email: true,
-            //   },
-            // });
             console.log("email", email);
-            ws._userEmail = email; // Attach email to WebSocket object
-            yield client.$connect(); // Connect to Prisma
-            // start processing the redis queue
-            QueueWorker_1.default; // Process Redis queue
-            console.log("reaching here on click of play button ");
-            gameManager.addUser(ws); // Add user to game manager
+            ws._userEmail = email;
+            yield client.$connect();
+            QueueWorker_1.default;
+            gameManager.addUser(ws);
             ws.on('close', () => {
                 gameManager.removeUser(ws);
             });
         }
         catch (err) {
             console.error('Invalid WebSocket token', err);
-            ws.close(); // Close WebSocket if token is invalid
+            ws.close();
         }
     });
 });

@@ -16,11 +16,7 @@ exports.userController = void 0;
 const userService_1 = require("../services/userService");
 const client_1 = require("@prisma/client");
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
-const Validation_1 = require("../utils/Validation");
 const client = new client_1.PrismaClient();
-// function hashedToPassword(hashedPassword: string) {
-//     const password = bcrypt
-// }
 exports.userController = {
     getUser(req, res) {
         return __awaiter(this, void 0, void 0, function* () {
@@ -55,17 +51,17 @@ exports.userController = {
         return __awaiter(this, void 0, void 0, function* () {
             //add zod validation here
             try {
-                const validatedData = Validation_1.signupSchema.safeParse(req.body);
-                console.log("Signup Validated Data using zod", validatedData);
+                // const validatedData = signupSchema.safeParse(req.body);
+                // console.log("Signup Validated Data using zod", validatedData);
                 console.log("request reached to signup endpoint");
                 yield client.user.create({
                     data: {
-                        name: validatedData.data.name,
-                        email: validatedData.data.email,
-                        password: validatedData.data.hashedPassword,
+                        name: req.body.name,
+                        email: req.body.email,
+                        password: req.body.password,
                     },
                 });
-                const email = validatedData.data.email;
+                const email = (req.body).email;
                 const existingUser = yield client.user.findFirst({
                     where: {
                         email
@@ -91,7 +87,7 @@ exports.userController = {
         return __awaiter(this, void 0, void 0, function* () {
             try {
                 const email = req.body.email;
-                const password = req.body.hashedPassword;
+                const password = req.body.password;
                 console.log("email and password", email, password);
                 const existingUser = yield client.user.findFirst({
                     where: {

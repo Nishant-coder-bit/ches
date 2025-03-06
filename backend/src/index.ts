@@ -25,7 +25,6 @@ app.use(express.json());
 app.use('/game', gameRoutes);
 app.use('/user', userRoutes);
 
-// Upgrade HTTP Server to Handle WebSocket Connections
 const server = app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
 });
@@ -41,7 +40,7 @@ wss.on('connection', async function connection(ws, req:any) {
   await client.$connect();
  
   const url = new URL(req.url, `http://${req.headers.host}`);
-  const token = url.searchParams.get('token'); // Extract token using searchParams
+  const token = url.searchParams.get('token');
 
   console.log("inside server token", token);
 
@@ -54,22 +53,12 @@ wss.on('connection', async function connection(ws, req:any) {
     console.log("payload",payload);
     //@ts-ignore
     const email = payload.id;
-    //  const emailObj = await client.user.findUnique({
-    //   where: {
-    //     id: id,
-    //   },
-    //   select: {
-    //     email: true,
-    //   },
-    // });
     console.log("email",email);
 
-    (ws as any)._userEmail =email; // Attach email to WebSocket object
-    await client.$connect(); // Connect to Prisma
-      // start processing the redis queue
-    QueueWorker; // Process Redis queue
-    console.log("reaching here on click of signup/login button ")
-    gameManager.addUser(ws); // Add user to game manager
+    (ws as any)._userEmail =email; 
+    await client.$connect(); 
+    QueueWorker;
+    gameManager.addUser(ws);
 
     ws.on('close', () => {
       gameManager.removeUser(ws);
@@ -77,7 +66,7 @@ wss.on('connection', async function connection(ws, req:any) {
   }
     catch (err) {
       console.error('Invalid WebSocket token', err);
-      ws.close(); // Close WebSocket if token is invalid
+      ws.close(); 
     }
 });
 

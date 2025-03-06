@@ -37,7 +37,9 @@ class Game {
     initializeGameData(player1Id, player2Id) {
         return __awaiter(this, void 0, void 0, function* () {
             try {
-                console.log(4);
+                this.player1Id = player1Id;
+                this.player2Id = player2Id;
+                console.log("inside Game Class constructor");
                 const game = yield client.game.create({
                     data: {
                         player1Id: player1Id,
@@ -46,8 +48,7 @@ class Game {
                         fen: this.board.fen(),
                     },
                 });
-                console.log(5);
-                console.log("game", game);
+                console.log(`Game is created between ${player1Id}  and ${player2Id}`, game);
                 this.gameId = game.id;
                 this.initializeGame(player1Id, player2Id, game.id);
             }
@@ -56,14 +57,13 @@ class Game {
             }
         });
     }
-    initializeGame(player1Id, player2Id, id) {
+    initializeGame(player1Id, player2Id, gameId) {
         this.player1.send(JSON.stringify({ type: Message_1.INIT_GAME, color: "white" }));
         this.player2.send(JSON.stringify({ type: Message_1.INIT_GAME, color: "black" }));
-        console.log(6);
+        console.log("inside initialize game method");
         RedisClient_1.default.set(`game:${this.gameId}`, JSON.stringify(this.board.fen()));
-        console.log(7);
-        RedisClient_1.default.set(`user:${player1Id}:game`, id);
-        RedisClient_1.default.set(`user:${player2Id}:game`, id);
+        RedisClient_1.default.set(`user:${player1Id}:game`, gameId);
+        RedisClient_1.default.set(`user:${player2Id}:game`, gameId);
     }
     makeMove(socket, move) {
         return __awaiter(this, void 0, void 0, function* () {
@@ -87,8 +87,9 @@ class Game {
                 console.log("move", move);
                 this.board.move(move);
                 this.broadcastMove(move);
+                const winner = this.board.turn() === "w" ? this.player1Id : this.player2Id;
                 //push move to redis queue
-                yield RedisClient_1.default.rpush(`game:${this.gameId}:queue`, JSON.stringify({ move, fen: this.board.fen(), pgn: this.board.pgn() }));
+                yield RedisClient_1.default.rpush(`game:${this.gameId}:queue`, JSON.stringify({ move, fen: this.board.fen(), pgn: this.board.pgn(), isGameOver: this.board.isGameOver(), winner: winner }));
             }
             catch (e) {
                 console.log("Invalid Move", e);
@@ -107,6 +108,11 @@ class Game {
         });
     }
     handleGameOver() {
+        // need to save the winner in the database of the game 
+        if (this.gameId) {
+            const winner = this.board.turn() === "w" ? "black" : "white";
+            RedisClient_1.default.set(`game:${this.gameId}:winner`, winner);
+        }
         this.player1.send(JSON.stringify({
             type: Message_1.GAME_OVER,
             payload: {

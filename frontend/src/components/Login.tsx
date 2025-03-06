@@ -11,11 +11,11 @@ const Login = () => {
   const handleLogin = async () => {
     // Handle login logic here
     try {
-       const hashedPassword = bcrypt.hashSync(password, 10);
+      //  const hashedPassword = bcrypt.hashSync(password, 10);
 
       const response = await axios.post("http://localhost:8080/user/login", {
         email,
-        hashedPassword,
+        password
       });
 
       console.log("login successful:", response.data);

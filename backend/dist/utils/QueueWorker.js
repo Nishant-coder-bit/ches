@@ -21,13 +21,18 @@ class QueueWorker {
     }
     processQueue() {
         return __awaiter(this, void 0, void 0, function* () {
+            console.log(`Inside processQueue`);
             while (true) {
+                // find all keys that match the pattern 'game:*:queue'
                 const keys = yield RedisClient_1.default.keys('game:*:queue');
+                // console.log(`keys are ${keys}`);
                 for (const key of keys) {
-                    const move = yield RedisClient_1.default.lpop(key);
-                    if (move) {
+                    const value = yield RedisClient_1.default.lpop(key);
+                    if (value) {
                         const { gameId } = this.parseGameId(key);
-                        yield this.saveMoveToDatabase(gameId, JSON.parse(move));
+                        console.log(`gameId is ${gameId}`);
+                        console.log(`saving move to database: ${value}`);
+                        yield this.saveMoveToDatabase(gameId, JSON.parse(value));
                     }
                 }
                 yield new Promise(resolve => setTimeout(resolve, 1000)); // Polling interval
@@ -36,10 +41,12 @@ class QueueWorker {
     }
     parseGameId(queueKey) {
         const match = /game:(.*):queue/.exec(queueKey);
+        console.log(`match is ${match}`);
         return { gameId: match ? match[1] : '' };
     }
-    saveMoveToDatabase(gameId, data) {
+    saveMoveToDatabase(gameId, value) {
         return __awaiter(this, void 0, void 0, function* () {
+            console.log(`Inside saveMoveToDatabase and gameId is ${gameId} and data is ${value}`);
             try {
                 // Check if the game exists
                 const gameExists = yield prisma.game.findUnique({
@@ -49,21 +56,21 @@ class QueueWorker {
                     console.error('Game not found for gameId:', gameId);
                     return;
                 }
-                if (data.gameOver) {
+                if (value.isGameOver === true) {
                     yield prisma.game.update({
                         where: { id: gameId },
-                        data: { winner: data.winner },
+                        data: { winnerId: value.winner },
                     });
                 }
                 else {
                     console.log("gameId:---->", gameId);
-                    console.log("data---->", data);
+                    console.log("data---->", value);
                     yield prisma.game.update({
                         where: { id: gameId },
-                        data: { moves: data.pgn, fen: data.fen },
+                        data: { moves: value.pgn, fen: value.fen },
                     });
                 }
-                console.log('Move stored in database:', Object.assign({ gameId }, data));
+                console.log('Move stored in database:', Object.assign({ gameId }, value));
             }
             catch (error) {
                 console.error('Error saving move to database:', error);

@@ -4,7 +4,7 @@ class RedisClient {
   private client: Redis;
 
   constructor() {
-    this.client = new Redis();
+    this.client = new Redis();  // connect to 127.0.0.1:6379
   }
 
   async set(key: string, value: string): Promise<void> {

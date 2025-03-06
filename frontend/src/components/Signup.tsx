@@ -28,10 +28,10 @@ const Signup = () => {
     }
 
     try {
-      const hashedPassword = bcrypt.hashSync(password, 10);
+      // const hashedPassword = bcrypt.hashSync(password, 10);
       const response = await axios.post("http://localhost:8080/user/signup", {
         email,
-        hashedPassword,
+        password,
         name,
       });
 

@@ -15,7 +15,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const ioredis_1 = __importDefault(require("ioredis"));
 class RedisClient {
     constructor() {
-        this.client = new ioredis_1.default();
+        this.client = new ioredis_1.default(); // connect to 127.0.0.1:6379
     }
     set(key, value) {
         return __awaiter(this, void 0, void 0, function* () {
