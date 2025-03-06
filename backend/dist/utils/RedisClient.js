@@ -12,10 +12,14 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.RedisSubscriber = exports.RedisPublisher = void 0;
 const ioredis_1 = __importDefault(require("ioredis"));
 class RedisClient {
     constructor() {
         this.client = new ioredis_1.default(); // connect to 127.0.0.1:6379
+        // this.client.on('message', (channel:any, message:any) => {
+        //   console.log(`Received message from channel ${channel}: ${message}`);
+        // })
     }
     set(key, value) {
         return __awaiter(this, void 0, void 0, function* () {
@@ -44,6 +48,16 @@ class RedisClient {
             return yield this.client.keys(pattern);
         });
     }
+    subscribe(channel) {
+        return __awaiter(this, void 0, void 0, function* () {
+            yield this.client.subscribe(channel);
+        });
+    }
+    publish(channel, message) {
+        return __awaiter(this, void 0, void 0, function* () {
+            yield this.client.publish(channel, message);
+        });
+    }
     del(key) {
         return __awaiter(this, void 0, void 0, function* () {
             yield this.client.del(key);
@@ -61,4 +75,6 @@ class RedisClient {
         });
     }
 }
+exports.RedisPublisher = new ioredis_1.default(); // For publishing game updates
+exports.RedisSubscriber = new ioredis_1.default(); // For subscribing to game updates
 exports.default = new RedisClient();

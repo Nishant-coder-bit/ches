@@ -1,16 +1,16 @@
 import { WebSocket } from 'ws';
-import RedisClient from './RedisClient';
+import RedisClient, { RedisSubscriber } from './RedisClient';
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
 export class WebSocketHandler {
   private gameParticipants: Map<string, Set<WebSocket>>;
-  // private gameSpectators: Map<string, Set<WebSocket>>;
+  private spectators: Map<string, Set<WebSocket>>;
 
   constructor() {
     this.gameParticipants = new Map();
-    // this.gameSpectators = new Map();
+    this.spectators = new Map();
   }
 
   async addParticipant(gameId: any, socket: WebSocket): Promise<void> {
@@ -33,15 +33,32 @@ export class WebSocketHandler {
     console.log(`added participant ${email} to game ${gameId} and count is ${count}`);
   }
 
-  // async addSpectator(gameId: string, socket: WebSocket): Promise<void> {
-  //   if (!this.gameSpectators.has(gameId)) {
-  //     this.gameSpectators.set(gameId, new Set());
-  //   }
-  //   this.gameSpectators.get(gameId)?.add(socket);
+  async addSpectator(gameId: string, ws: WebSocket) {
+    console.log(`Adding spectator to game: ${gameId}`);
 
-  //   const email = (socket as any)._userEmail;
-  //   await RedisClient.rpush(`game:${gameId}:spectators`, email);
-  // }
+    if (!this.spectators.has(gameId)) {
+      this.spectators.set(gameId, new Set());
+    }
+
+    this.spectators.get(gameId)!.add(ws);
+
+    // Subscribe to Redis game updates
+    await RedisSubscriber.subscribe(gameId);
+
+    RedisSubscriber.on("message", (channel, message) => {
+      if (channel === gameId) {
+        console.log(`Sending update to spectators of game ${gameId}`);
+        this.spectators.get(gameId)?.forEach((spectator) => {
+          spectator.send(message);
+        });
+      }
+    });
+
+    ws.send(JSON.stringify({ message: "Spectating game", gameId }));
+
+  
+
+  }
 
   // async handleDisconnection(gameId: string, socket: WebSocket): Promise<void> {
   //   const participantSet = this.gameParticipants.get(gameId);

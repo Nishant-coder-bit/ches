@@ -1,5 +1,5 @@
 import  { useEffect, useState } from "react";
-import Chessboard from "chessboardjsx";
+import { Chessboard } from "react-chessboard";
 import { Chess } from "chess.js"; // For handling chess logic
 import { useSocket } from "../hooks/useSocket";
 import { useLocation } from "react-router-dom";
@@ -141,15 +141,7 @@ export const Game = () => {
   }, [socket, game, history]);
 
   // Function to handle moves
-  const handleMove = (move: { from: any; to: any }) => {
-//      socket?.send(JSON.stringify({
-//     type:"move",
-//     payload:{
-//        from:move.from,
-//        to:move.to
-
-//     }
-//  }))   
+  const handleMove = (move: { from: any; to: any }):boolean => { 
   try{
     const color = game.get(move.from);
     let newcolor = "";
@@ -160,7 +152,7 @@ export const Game = () => {
       console.log("color",color);
     if(newcolor!== playerColor){
       console.log("not allowed wrong color player ")
-      return ;
+      return false;
     }
     const result = game.move({
       from: move.from,
@@ -180,12 +172,14 @@ export const Game = () => {
    }))    
         setHistory((prevHistory) => [...prevHistory, game.fen()]); // Update history
         setFen(game.fen());
+        return true;
   } 
   catch(e){
     console.log("Invalid move attempted locally");
     const previousFen = history[history.length - 1]; // Revert to previous state
     setFen(previousFen || "start");
     setBoardKey(prevKey => prevKey + 1); // Force re-ren
+    return false;
   }
   
   };
@@ -196,17 +190,17 @@ export const Game = () => {
       <div className="flex flex-col items-center justify-center md:w-3/4 p-6">
         <h1 className="text-3xl font-bold text-gray-800 mb-4">Chess Game</h1>
         <Chessboard
-          key={boardKey}  // Ensure Chessboard re-renders when key changes
-          position={fen}
-          onDrop={(move) =>
-            handleMove({ from: move.sourceSquare, to: move.targetSquare })
-          }
-          width={480}
-          boardStyle={{
-            borderRadius: "10px",
-            boxShadow: "0 5px 15px rgba(0,0,0,0.2)",
-          }}
-        />
+  key={boardKey}
+  position={fen}
+  onPieceDrop={(sourceSquare, targetSquare) => 
+    handleMove({ from: sourceSquare, to: targetSquare })
+  }
+  boardWidth={480}
+  boardStyle={{
+    borderRadius: "10px",
+    boxShadow: "0 5px 15px rgba(0,0,0,0.2)",
+  }}
+/>
       </div>
 
       {/* Utility Area */}

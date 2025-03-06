@@ -20,12 +20,23 @@ export const gameController = {
   //   }
   // },
 
-  // async addSpectator(req: Request, res: Response) {
-  //   try {
-  //     await gameService.addSpectator(req.params.gameId, req.body.email);
-  //     res.status(200).send('Spectator added');
-  //   } catch (error) {
-  //     res.status(500).send('Internal Server Error');
-  //   }
-  // },
+  async addSpectator(req: Request, res: Response) {
+    try {
+      await gameService.addSpectator(req.params.gameId);
+      res.status(200).send('Spectator added');
+    } catch (error) {
+      res.status(500).send('Internal Server Error');
+    }
+  },
+   async getOngoingGames(req: Request, res: Response) {
+    try {
+      console.log("inside get ongoing games");
+     const games =  await gameService.getOngoingGames();
+     console.log(`games are ${games}`);
+      res.status(200).send(games);
+    } catch (error) {
+      res.status(500).send('Internal Server Error');
+    }
+  }
+  
 };

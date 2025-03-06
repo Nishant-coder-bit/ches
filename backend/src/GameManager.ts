@@ -3,7 +3,7 @@ import { INIT_GAME, JOIN_SPECTATOR, MOVE } from "./utils/Message";
 import {  PrismaClient, User } from "@prisma/client";
 import { Game } from "./models/Game";
 import { WebSocketHandler } from "./utils/WebSocketHandler";
-import RedisClient from "./utils/RedisClient";
+import RedisClient, { RedisPublisher } from "./utils/RedisClient";
 const client = new PrismaClient();
 const webSocketHandler = new WebSocketHandler();
 export class GameManager {
@@ -97,7 +97,7 @@ export class GameManager {
         if(this.pendingUser === socket){
           console.log("try playing with new player , this is not allowed");
         }
-      else  if (this.pendingUser ) {
+        else  if (this.pendingUser ) {
           //start the game
           
           console.log("(socket as any)._userEmail",(socket as any)._userEmail);
@@ -136,6 +136,11 @@ export class GameManager {
           this.countTotalGames += 1;
           console.log(`total number of game running on server is ${this.countTotalGames}`);
           console.log("game initailised");
+          console.log(`Publishing game state for game ${game.gameId}`);
+          if(game.gameId){
+            console.log(`message is ${JSON.stringify(message)}`);
+            await RedisPublisher.publish(game.gameId, JSON.stringify({type:"init_game",payload:message.payload,game:game}));
+          }
           this.pendingUser = null;
         } else {
           this.pendingUser = socket;
@@ -154,15 +159,28 @@ export class GameManager {
           console.log("----------------------");
           console.log("game inside move ", game);
           game.makeMove(socket, message.payload);
+
+          console.log(`Publishing game state for game ${game.gameId}`);
+          if(game.gameId){
+            console.log(`message is ${JSON.stringify(message)}`);
+            await RedisPublisher.publish(game.gameId, JSON.stringify({type:"move",payload:message.payload,game:game}));
+          }
         }
       }
-      // if (message.type === JOIN_SPECTATOR) {
-      //   const gameId = message.payload.gameId;
-      //   await this.addSpectator(gameId, socket);
-      // }
+    
     });
   }
-  // async addSpectator(gameId: string, socket: WebSocket) {
-  //   await webSocketHandler.addSpectator(gameId, socket);
-  // }
+
+   async addSpectator( socket: WebSocket) {
+    console.log(`inside game manager add spectator `)
+     socket.on("message", async (data) => {
+        const message = JSON.parse(data.toString());
+        console.log(`on message ${message}`);
+        if (message.type === JOIN_SPECTATOR) {
+          const gameId = message.payload.gameId;
+          console.log("gameId inside join spectator",gameId);
+          await webSocketHandler.addSpectator(gameId, socket);
+        }
+      });
+  }
 }

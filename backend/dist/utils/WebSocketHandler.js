@@ -1,4 +1,37 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -8,19 +41,15 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.WebSocketHandler = void 0;
-const RedisClient_1 = __importDefault(require("./RedisClient"));
+const RedisClient_1 = __importStar(require("./RedisClient"));
 const client_1 = require("@prisma/client");
 const prisma = new client_1.PrismaClient();
 class WebSocketHandler {
-    // private gameSpectators: Map<string, Set<WebSocket>>;
     constructor() {
         this.gameParticipants = new Map();
-        // this.gameSpectators = new Map();
+        this.spectators = new Map();
     }
     addParticipant(gameId, socket) {
         return __awaiter(this, void 0, void 0, function* () {
@@ -38,17 +67,31 @@ class WebSocketHandler {
             yield prisma.participant.create({
                 data: { gameId, userEmail: email }
             });
-            console.log(`added participant ${email} to game ${gameId} and count is ${count++}`);
+            count++;
+            console.log(`added participant ${email} to game ${gameId} and count is ${count}`);
         });
     }
-    // async addSpectator(gameId: string, socket: WebSocket): Promise<void> {
-    //   if (!this.gameSpectators.has(gameId)) {
-    //     this.gameSpectators.set(gameId, new Set());
-    //   }
-    //   this.gameSpectators.get(gameId)?.add(socket);
-    //   const email = (socket as any)._userEmail;
-    //   await RedisClient.rpush(`game:${gameId}:spectators`, email);
-    // }
+    addSpectator(gameId, ws) {
+        return __awaiter(this, void 0, void 0, function* () {
+            console.log(`Adding spectator to game: ${gameId}`);
+            if (!this.spectators.has(gameId)) {
+                this.spectators.set(gameId, new Set());
+            }
+            this.spectators.get(gameId).add(ws);
+            // Subscribe to Redis game updates
+            yield RedisClient_1.RedisSubscriber.subscribe(gameId);
+            RedisClient_1.RedisSubscriber.on("message", (channel, message) => {
+                var _a;
+                if (channel === gameId) {
+                    console.log(`Sending update to spectators of game ${gameId}`);
+                    (_a = this.spectators.get(gameId)) === null || _a === void 0 ? void 0 : _a.forEach((spectator) => {
+                        spectator.send(message);
+                    });
+                }
+            });
+            ws.send(JSON.stringify({ message: "Spectating game", gameId }));
+        });
+    }
     // async handleDisconnection(gameId: string, socket: WebSocket): Promise<void> {
     //   const participantSet = this.gameParticipants.get(gameId);
     //   if (participantSet?.has(socket)) {

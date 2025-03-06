@@ -5,7 +5,13 @@ class RedisClient {
 
   constructor() {
     this.client = new Redis();  // connect to 127.0.0.1:6379
+    // this.client.on('message', (channel:any, message:any) => {
+    //   console.log(`Received message from channel ${channel}: ${message}`);
+    // })
   }
+  
+
+  
 
   async set(key: string, value: string): Promise<void> {
     await this.client.set(key, value);
@@ -29,6 +35,15 @@ class RedisClient {
     return await this.client.keys(pattern);
   }
 
+  async subscribe(channel: string): Promise<void> {
+     await this.client.subscribe(channel);
+
+  }
+
+  async publish(channel: string, message: string): Promise<void> {
+    await this.client.publish(channel, message);
+  }
+
   async del(key: string): Promise<void> {
     await this.client.del(key);
   }
@@ -42,5 +57,6 @@ class RedisClient {
     await this.connect();
   }
 }
-
+export const RedisPublisher = new Redis(); // For publishing game updates
+export const RedisSubscriber = new Redis(); // For subscribing to game updates
 export default new RedisClient();

@@ -68,6 +68,14 @@ class Game {
     makeMove(socket, move) {
         return __awaiter(this, void 0, void 0, function* () {
             if (this.gameId) {
+                yield client.game.update({
+                    where: {
+                        id: this.gameId
+                    },
+                    data: {
+                        status: "ongoing"
+                    }
+                });
                 yield RedisClient_1.default.set(`game:${this.gameId}`, JSON.stringify({
                     fen: this.board.fen(),
                     moves: this.board.pgn(),

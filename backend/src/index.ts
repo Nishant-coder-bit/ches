@@ -41,27 +41,31 @@ wss.on('connection', async function connection(ws, req:any) {
  
   const url = new URL(req.url, `http://${req.headers.host}`);
   const token = url.searchParams.get('token');
-
+  const gameId = url.searchParams.get("gameId"); 
+  console.log("gameId inside index.ts web socket server",gameId);
   console.log("inside server token", token);
 
   try {
     let payload:any;
     if(token){
-       payload = jwt.verify(token, "12345");
+       payload = jwt.verify(token, "12345") // Verify token
+       console.log("payload",payload);
+       //@ts-ignore
+       const email = payload.id;
+       console.log("email",email);
+   
+       (ws as any)._userEmail =email; 
+       await client.$connect(); 
+       QueueWorker;
+       gameManager.addUser(ws);
+  
     }
-   // Verify token
-    console.log("payload",payload);
-    //@ts-ignore
-    const email = payload.id;
-    console.log("email",email);
-
-    (ws as any)._userEmail =email; 
-    await client.$connect(); 
-    QueueWorker;
-    gameManager.addUser(ws);
-
+    gameManager.addSpectator(ws);
     ws.on('close', () => {
-      gameManager.removeUser(ws);
+      if(token){
+
+        gameManager.removeUser(ws);
+      }
     });
   }
     catch (err) {

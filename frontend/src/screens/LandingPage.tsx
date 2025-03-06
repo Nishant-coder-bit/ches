@@ -1,15 +1,38 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Login from "../components/Login";
 import Signup from "../components/Signup";
 
-
 export const LandingPage = () => {
   const navigate = useNavigate();
-  const [email, setEmail] = useState("");
   const [showLogin, setShowLogin] = useState(false);
   const [showSignup, setShowSignup] = useState(false);
+  const [ongoingGames, setOngoingGames] = useState<{ id: string }[]>([]);
+
+  useEffect(() => {
+    fetch("http://localhost:8080/game/ongoing") // Fetch ongoing games
+      .then((res) => res.json())
+      .then((data) => setOngoingGames(data))
+      .catch((error) => console.error("Error fetching ongoing games:", error));
+  }, []);
+
+  const joinSpectator = async (gameId: string) => {
+    try {
+  
+      const res = await fetch(`http://localhost:8080/game/${gameId}/spectate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+
+      if (res.ok) {
+        navigate(`/game/${gameId}/spectate`); // Redirect to spectator view
+      } else {
+        console.error("Failed to join as spectator");
+      }
+    } catch (error) {
+      console.error("Error joining spectator:", error);
+    }
+  };
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row items-center justify-center bg-gray-100 p-6 relative">
@@ -22,8 +45,8 @@ export const LandingPage = () => {
           Join millions of players worldwide. Play chess for free, improve your
           skills, and have fun!
         </p>
-   
       </div>
+
       {/* Right Section */}
       <div className="md:w-1/2 flex flex-col items-center p-6 bg-white shadow-lg rounded-lg">
         <img
@@ -31,6 +54,7 @@ export const LandingPage = () => {
           alt="Chess Board"
           className="w-full max-w-md rounded-lg shadow-lg mb-6"
         />
+
         {/* Login and Signup Buttons */}
         <div className="flex flex-col space-y-4">
           <button
@@ -46,19 +70,36 @@ export const LandingPage = () => {
             Sign Up
           </button>
         </div>
+
+        {/* List of Ongoing Games */}
+        <div className="mt-6 w-full">
+          <h2 className="text-xl font-semibold text-gray-700 mb-3">Ongoing Games</h2>
+          {ongoingGames.length > 0 ? (
+            <ul className="space-y-2">
+              {ongoingGames.map((game) => (
+                <li
+                  key={game.id}
+                  className="cursor-pointer p-2 bg-blue-100 hover:bg-blue-200 rounded-md transition"
+                  onClick={() => joinSpectator(game.id)}
+                >
+                  Game {game.id}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-gray-600">No ongoing games available.</p>
+          )}
+        </div>
       </div>
 
       {/* Login Modal */}
       {showLogin && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
           <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
-          <div className="h-100 w-100 flex justify-items-end">
-          <button
-              className="text-red-500  top-2 right-2"
-              onClick={() => setShowLogin(false)}
-            >
-              &times;
-            </button>
+            <div className="flex justify-end">
+              <button className="text-red-500" onClick={() => setShowLogin(false)}>
+                &times;
+              </button>
             </div>
             <Login />
           </div>
@@ -69,13 +110,10 @@ export const LandingPage = () => {
       {showSignup && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
           <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
-          <div className="h-100 w-100 flex justify-items-end">
-          <button
-              className="text-red-500  top-2 right-2"
-              onClick={() => setShowSignup(false)}
-            >
-              &times;
-            </button>
+            <div className="flex justify-end">
+              <button className="text-red-500" onClick={() => setShowSignup(false)}>
+                &times;
+              </button>
             </div>
             <Signup />
           </div>

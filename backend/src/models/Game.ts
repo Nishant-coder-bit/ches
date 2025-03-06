@@ -69,6 +69,14 @@ export class Game {
     }
   ) {
     if (this.gameId) {
+      await client.game.update({
+        where:{
+          id:this.gameId
+        },
+        data:{
+          status:"ongoing"
+        }
+      })
       await RedisClient.set(`game:${this.gameId}`, JSON.stringify({
         fen: this.board.fen(),
         moves: this.board.pgn(),
