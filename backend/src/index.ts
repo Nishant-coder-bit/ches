@@ -9,10 +9,12 @@ import { PrismaClient } from '@prisma/client';
 import { URL } from 'url';
 import cors from "cors"
 import QueueWorker from './utils/QueueWorker';
+import { setupSwagger } from './swagger';
 dotenv.config();
 import jwt from 'jsonwebtoken';
 
 const app = express();
+setupSwagger(app);
 const client = new PrismaClient();
 
 app.use(express.json());
