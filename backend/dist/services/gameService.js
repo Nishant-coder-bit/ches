@@ -19,9 +19,11 @@ exports.gameService = {
             return prisma.game.findUnique({ where: { id: gameId } });
         });
     },
-    // async recoverGame(gameId: string) {
-    //   return prisma.game.findUnique({ where: { id: gameId } });
-    // },
+    recoverGame(gameId) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return prisma.game.findUnique({ where: { id: gameId } });
+        });
+    },
     addSpectator(gameId) {
         return __awaiter(this, void 0, void 0, function* () {
             console.log(`Adding spectator to game: ${gameId}`);

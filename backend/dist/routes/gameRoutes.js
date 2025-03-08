@@ -47,6 +47,10 @@ router.post("/:gameId/spectate", gameController_1.gameController.addSpectator);
  */
 router.get("/ongoing", gameController_1.gameController.getOngoingGames);
 // router.get("/game/:id", gameController.getGame);
-// router.get("/:id/recover", gameController.recoverGame);
+/**
+ * @swagger
+ * /game/{id}/recover:
+ */
+router.get("/:id/recover", gameController_1.gameController.recoverGame);
 // router.post("/create", gameController.createGame);
 exports.default = router;

@@ -2,7 +2,7 @@ import { Chess } from "chess.js";
 import { WebSocket } from "ws";
 import { PrismaClient, User } from "@prisma/client";
 import RedisClient from "../utils/RedisClient";
-import { GAME_OVER, INIT_GAME, INVALID_MOVE, MOVE } from "../utils/Message";
+import { GAME_OVER, GAME_STATUS_ONGOING, INIT_GAME, INVALID_MOVE, MOVE } from "../utils/Message";
 const client = new PrismaClient();
 export class Game {
   public player1: WebSocket;
@@ -11,8 +11,8 @@ export class Game {
   private startTime: Date;
   private moveCount: number;
   public gameId: string | undefined;
-  private player1Id:any;
-  private player2Id: any;
+  public player1Id:any;
+  public player2Id: any;
   constructor(player1: WebSocket, player2: WebSocket) {
     this.player1 = player1;
     this.player2 = player2;
@@ -44,6 +44,7 @@ export class Game {
           player2Id: player2Id,
           moves: this.board.pgn(), // `this.board` is now initialized.
           fen: this.board.fen(),
+          status:GAME_STATUS_ONGOING
         },
       });
       console.log(`Game is created between ${player1Id}  and ${player2Id}`, game);
@@ -56,8 +57,13 @@ export class Game {
   private initializeGame(player1Id: number, player2Id: number,gameId:string) {
     this.player1.send(JSON.stringify({ type: INIT_GAME, color: "white" }));
     this.player2.send(JSON.stringify({ type: INIT_GAME, color: "black" }));
-   
-    RedisClient.set(`game:${this.gameId}`, JSON.stringify(this.board.fen()));
+     console.log(`inside initialize game and gameId is ${gameId} and player1Id is ${player1Id} and player2Id is ${player2Id}`);
+     RedisClient.set(`game:${this.gameId}`, JSON.stringify({
+      fen: this.board.fen(),
+      player1Id: this.player1Id,
+      player2Id: this.player2Id,
+      turn: this.board.turn() === "w"? "black":"white"
+    }));
     RedisClient.set(`user:${player1Id}:game`, gameId);
     RedisClient.set(`user:${player2Id}:game`, gameId);
   }
@@ -80,6 +86,9 @@ export class Game {
       await RedisClient.set(`game:${this.gameId}`, JSON.stringify({
         fen: this.board.fen(),
         moves: this.board.pgn(),
+        player1Id: this.player1Id,
+        player2Id: this.player2Id,
+        turn: this.board.turn() === "w"? "black":"white"
       })); // Update game state in Redis
     }
     //validate type of move using zod
@@ -97,10 +106,16 @@ export class Game {
       this.broadcastMove(move);
       const winner = this.board.turn() === "w" ? this.player1Id :this.player2Id;
       //push move to redis queue
-      await RedisClient.rpush(
-        `game:${this.gameId}:queue`,
-        JSON.stringify({ move, fen: this.board.fen(), pgn: this.board.pgn(),isGameOver:this.board.isGameOver(),winner:winner })
-      );
+      const moveData = JSON.stringify({
+        move: move, 
+        fen: this.board.fen(), 
+        pgn: this.board.pgn(), 
+        isGameOver: this.board.isGameOver(),
+        winner: winner
+      });
+      console.log("Pushing to Redis:", moveData);
+      await RedisClient.rpush( `game:${this.gameId}:queue`,moveData);
+      await new Promise(resolve => setTimeout(resolve, 100)); 
     } catch (e) {
       console.log("Invalid Move", e);
       socket.send(JSON.stringify({

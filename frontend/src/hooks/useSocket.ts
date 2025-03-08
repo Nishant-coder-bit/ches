@@ -1,36 +1,46 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState } from "react";
 
-const WS_URL = "ws://localhost:8080/";
-
-export const useSocket = () => {
-  const [socket, setSocket] = useState<WebSocket | null>(null);
+const WS_URL = "ws://localhost:8080";
+export function useSocket() {
+  const [socket, setSocket] = useState<WebSocket> ();
+  const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
-    const token = localStorage.getItem('token'); // Get token from localStorage
-    if (token) {
-      // Use native WebSocket in the browser
-       console.log("token inside usesocket",token);
-      const ws = new WebSocket(`${WS_URL}?token=${token}`);
+    let ws:WebSocket;
+    
+    const connectSocket = () => {
+      const token = localStorage.getItem('token'); 
+      if(!token){
+          console.log("No token found. Please login first.");
+          return ;
+      }
+      ws = new WebSocket(`${WS_URL}?token=${token}`);
 
       ws.onopen = () => {
-        console.log('WebSocket connected');
+        console.log("WebSocket Connected");
+        setIsConnected(true);
         setSocket(ws);
+
+        // If the player is reconnecting, request game state
+        ws.send(JSON.stringify({ type: "reconnect_request" }));
       };
 
       ws.onclose = () => {
-        console.log('WebSocket closed');
-        setSocket(null);
+        console.log("WebSocket Disconnected. Reconnecting...");
+        setIsConnected(false);
+        setTimeout(() => connectSocket(), 3000); // Auto-reconnect after 3 seconds
       };
 
-      ws.onerror = (error) => {
-        console.error('WebSocket error:', error);
-      };
-
-      return () => {
+      ws.onerror = (err) => {
+        console.log("WebSocket Error:", err);
         ws.close();
       };
-    }
+    };
+
+    connectSocket();
+
+    return () => ws?.close(); // Cleanup on unmount
   }, []);
 
-  return socket;
-};
+  return { socket, isConnected };
+}

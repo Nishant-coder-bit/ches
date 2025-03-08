@@ -11,7 +11,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "@prisma/client": "^6.1.0",
+    "@prisma/client": "^6.4.1",
     "@types/express": "^5.0.0",
     "@types/ioredis": "^4.28.10",
     "@types/ws": "^8.5.13",
@@ -36,6 +36,6 @@
     "@types/jsonwebtoken": "^9.0.7",
     "@types/swagger-jsdoc": "^6.0.4",
     "@types/swagger-ui-express": "^4.1.8",
-    "prisma": "^6.1.0"
+    "prisma": "^6.4.1"
   }
 }

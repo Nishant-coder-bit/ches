@@ -12,6 +12,7 @@ import QueueWorker from './utils/QueueWorker';
 import { setupSwagger } from './swagger';
 dotenv.config();
 import jwt from 'jsonwebtoken';
+import RedisClient from './utils/RedisClient';
 
 const app = express();
 setupSwagger(app);
@@ -43,9 +44,8 @@ wss.on('connection', async function connection(ws, req:any) {
  
   const url = new URL(req.url, `http://${req.headers.host}`);
   const token = url.searchParams.get('token');
-  const gameId = url.searchParams.get("gameId"); 
-  console.log("gameId inside index.ts web socket server",gameId);
-  console.log("inside server token", token);
+
+
 
   try {
     let payload:any;
@@ -59,7 +59,21 @@ wss.on('connection', async function connection(ws, req:any) {
        (ws as any)._userEmail =email; 
        await client.$connect(); 
        QueueWorker;
-       gameManager.addUser(ws);
+
+       //check if user is reconnecting
+       const userId = await gameManager.getIdOfUser(email);
+       const existingGameId = await RedisClient.get(`user:${userId}:game`);
+
+       if(existingGameId){
+        console.log(`User ${email} is reconnecting to game ${existingGameId}`);
+        // Restore their game state
+         await gameManager.addUser(ws); 
+
+       }else{
+
+         gameManager.addUser(ws);
+       }
+
   
     }
     gameManager.addSpectator(ws);

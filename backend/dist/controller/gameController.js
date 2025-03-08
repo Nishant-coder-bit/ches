@@ -20,14 +20,17 @@ exports.gameController = {
     //     res.status(500).send('Internal Server Error');
     //   }
     // },
-    // async recoverGame(req: Request, res: Response) {
-    //   try {
-    //     const game = await gameService.recoverGame(req.params.id);
-    //     res.json(game);
-    //   } catch (error) {
-    //     res.status(500).send('Internal Server Error');
-    //   }
-    // },
+    recoverGame(req, res) {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                const game = yield gameService_1.gameService.recoverGame(req.params.id);
+                res.json(game);
+            }
+            catch (error) {
+                res.status(500).send('Internal Server Error');
+            }
+        });
+    },
     addSpectator(req, res) {
         return __awaiter(this, void 0, void 0, function* () {
             try {

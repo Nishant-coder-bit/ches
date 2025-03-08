@@ -48,6 +48,9 @@ class RedisClient {
     await this.client.connect();
   }
 
+  async expire(key:string,value:any): Promise<void> {
+    await this.client.expire(key,value);
+  }
   async reconnect(): Promise<void> {
     await this.client.disconnect();
     await this.connect();

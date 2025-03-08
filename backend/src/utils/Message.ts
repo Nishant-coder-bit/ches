@@ -3,3 +3,4 @@ export const MOVE = 'move';
 export const GAME_OVER = 'game_over';
 export const JOIN_SPECTATOR = 'join_spectator';
 export const INVALID_MOVE = 'invalid move';
+export const GAME_STATUS_ONGOING = 'ongoing';

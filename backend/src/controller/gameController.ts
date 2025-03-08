@@ -11,14 +11,14 @@ export const gameController = {
   //   }
   // },
 
-  // async recoverGame(req: Request, res: Response) {
-  //   try {
-  //     const game = await gameService.recoverGame(req.params.id);
-  //     res.json(game);
-  //   } catch (error) {
-  //     res.status(500).send('Internal Server Error');
-  //   }
-  // },
+  async recoverGame(req: Request, res: Response) {
+    try {
+      const game = await gameService.recoverGame(req.params.id);
+      res.json(game);
+    } catch (error) {
+      res.status(500).send('Internal Server Error');
+    }
+  },
 
   async addSpectator(req: Request, res: Response) {
     try {

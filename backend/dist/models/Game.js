@@ -39,13 +39,13 @@ class Game {
             try {
                 this.player1Id = player1Id;
                 this.player2Id = player2Id;
-                console.log("inside Game Class constructor");
                 const game = yield client.game.create({
                     data: {
                         player1Id: player1Id,
                         player2Id: player2Id,
                         moves: this.board.pgn(), // `this.board` is now initialized.
                         fen: this.board.fen(),
+                        status: Message_1.GAME_STATUS_ONGOING
                     },
                 });
                 console.log(`Game is created between ${player1Id}  and ${player2Id}`, game);
@@ -60,8 +60,13 @@ class Game {
     initializeGame(player1Id, player2Id, gameId) {
         this.player1.send(JSON.stringify({ type: Message_1.INIT_GAME, color: "white" }));
         this.player2.send(JSON.stringify({ type: Message_1.INIT_GAME, color: "black" }));
-        console.log("inside initialize game method");
-        RedisClient_1.default.set(`game:${this.gameId}`, JSON.stringify(this.board.fen()));
+        console.log(`inside initialize game and gameId is ${gameId} and player1Id is ${player1Id} and player2Id is ${player2Id}`);
+        RedisClient_1.default.set(`game:${this.gameId}`, JSON.stringify({
+            fen: this.board.fen(),
+            player1Id: this.player1Id,
+            player2Id: this.player2Id,
+            turn: this.board.turn() === "w" ? "black" : "white"
+        }));
         RedisClient_1.default.set(`user:${player1Id}:game`, gameId);
         RedisClient_1.default.set(`user:${player2Id}:game`, gameId);
     }
@@ -79,6 +84,9 @@ class Game {
                 yield RedisClient_1.default.set(`game:${this.gameId}`, JSON.stringify({
                     fen: this.board.fen(),
                     moves: this.board.pgn(),
+                    player1Id: this.player1Id,
+                    player2Id: this.player2Id,
+                    turn: this.board.turn() === "w" ? "black" : "white"
                 })); // Update game state in Redis
             }
             //validate type of move using zod
@@ -91,13 +99,20 @@ class Game {
                 return;
             }
             try {
-                console.log("------------------");
-                console.log("move", move);
                 this.board.move(move);
                 this.broadcastMove(move);
                 const winner = this.board.turn() === "w" ? this.player1Id : this.player2Id;
                 //push move to redis queue
-                yield RedisClient_1.default.rpush(`game:${this.gameId}:queue`, JSON.stringify({ move, fen: this.board.fen(), pgn: this.board.pgn(), isGameOver: this.board.isGameOver(), winner: winner }));
+                const moveData = JSON.stringify({
+                    move: move,
+                    fen: this.board.fen(),
+                    pgn: this.board.pgn(),
+                    isGameOver: this.board.isGameOver(),
+                    winner: winner
+                });
+                console.log("Pushing to Redis:", moveData);
+                yield RedisClient_1.default.rpush(`game:${this.gameId}:queue`, moveData);
+                yield new Promise(resolve => setTimeout(resolve, 100));
             }
             catch (e) {
                 console.log("Invalid Move", e);

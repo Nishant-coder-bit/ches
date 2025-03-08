@@ -25,6 +25,7 @@ const QueueWorker_1 = __importDefault(require("./utils/QueueWorker"));
 const swagger_1 = require("./swagger");
 dotenv_1.default.config();
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
+const RedisClient_1 = __importDefault(require("./utils/RedisClient"));
 const app = (0, express_1.default)();
 (0, swagger_1.setupSwagger)(app);
 const client = new client_1.PrismaClient();
@@ -49,9 +50,6 @@ wss.on('connection', function connection(ws, req) {
         yield client.$connect();
         const url = new url_1.URL(req.url, `http://${req.headers.host}`);
         const token = url.searchParams.get('token');
-        const gameId = url.searchParams.get("gameId");
-        console.log("gameId inside index.ts web socket server", gameId);
-        console.log("inside server token", token);
         try {
             let payload;
             if (token) {
@@ -63,7 +61,17 @@ wss.on('connection', function connection(ws, req) {
                 ws._userEmail = email;
                 yield client.$connect();
                 QueueWorker_1.default;
-                gameManager.addUser(ws);
+                //check if user is reconnecting
+                const userId = yield gameManager.getIdOfUser(email);
+                const existingGameId = yield RedisClient_1.default.get(`user:${userId}:game`);
+                if (existingGameId) {
+                    console.log(`User ${email} is reconnecting to game ${existingGameId}`);
+                    // Restore their game state
+                    yield gameManager.addUser(ws);
+                }
+                else {
+                    gameManager.addUser(ws);
+                }
             }
             gameManager.addSpectator(ws);
             ws.on('close', () => {

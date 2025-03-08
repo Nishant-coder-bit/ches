@@ -9,7 +9,6 @@ const UserMiddleware = (req, res, next) => {
     const header = req.headers["authorization"];
     const token = header === null || header === void 0 ? void 0 : header.split(" ")[1];
     const decoded = jsonwebtoken_1.default.verify(token, "12345");
-    console.log("decoded", decoded);
     if (decoded) {
         //@ts-ignore
         req.userEmail = decoded.id;

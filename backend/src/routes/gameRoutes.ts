@@ -51,7 +51,13 @@ router.get("/ongoing", gameController.getOngoingGames);
 
 
 // router.get("/game/:id", gameController.getGame);
-// router.get("/:id/recover", gameController.recoverGame);
+
+/**
+ * @swagger
+ * /game/{id}/recover:
+ */
+router.get("/:id/recover", gameController.recoverGame);
+
 // router.post("/create", gameController.createGame);
 
 export default router;

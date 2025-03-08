@@ -25,17 +25,15 @@ class QueueWorker {
             while (true) {
                 // find all keys that match the pattern 'game:*:queue'
                 const keys = yield RedisClient_1.default.keys('game:*:queue');
-                // console.log(`keys are ${keys}`);
                 for (const key of keys) {
                     const value = yield RedisClient_1.default.lpop(key);
                     if (value) {
                         const { gameId } = this.parseGameId(key);
-                        console.log(`gameId is ${gameId}`);
                         console.log(`saving move to database: ${value}`);
                         yield this.saveMoveToDatabase(gameId, JSON.parse(value));
                     }
                 }
-                yield new Promise(resolve => setTimeout(resolve, 1000)); // Polling interval
+                yield new Promise(resolve => setTimeout(resolve, 2000)); // Polling interval
             }
         });
     }
@@ -63,8 +61,6 @@ class QueueWorker {
                     });
                 }
                 else {
-                    console.log("gameId:---->", gameId);
-                    console.log("data---->", value);
                     yield prisma.game.update({
                         where: { id: gameId },
                         data: { moves: value.pgn, fen: value.fen },

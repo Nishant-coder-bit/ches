@@ -60,6 +60,7 @@ class GameManager {
     // utility function to get id of user
     getIdOfUser(email) {
         return __awaiter(this, void 0, void 0, function* () {
+            email = email.replace(/^"|"$/g, '');
             const user = yield client.user.findUnique({
                 where: { email: email },
                 select: { id: true }
@@ -72,23 +73,31 @@ class GameManager {
         return __awaiter(this, void 0, void 0, function* () {
             this.users.push(socket);
             const email = socket._userEmail.replace(/^"|"$/g, '');
-            const id = this.getIdOfUser(email);
+            const id = yield this.getIdOfUser(email);
+            if (!id) {
+                return;
+            }
             const gameId = yield RedisClient_1.default.get(`user:${id}:game`);
             if (gameId) {
                 const gameState = yield RedisClient_1.default.get(`game:${gameId}`);
-                console.log(`gameState from redis client is ${gameState}`);
+                console.log(`gameState is ${gameState}`);
                 if (gameState) {
-                    // Send restored state to user
-                    socket.send(JSON.stringify({ type: Message_1.INIT_GAME, payload: JSON.parse(gameState) }));
+                    const parsedGameState = JSON.parse(gameState);
+                    console.log(`parsedGameState is ${parsedGameState.player1Id} and ${parsedGameState.player2Id}`);
+                    // Determine player color
+                    const playerColor = parsedGameState.player1Id === id ? "white" : "black";
+                    // Send restored state with color
+                    socket.send(JSON.stringify({
+                        type: Message_1.INIT_GAME,
+                        payload: Object.assign({}, parsedGameState),
+                        turn: parsedGameState.turn,
+                    }));
+                    // Remove disconnection marker
+                    yield RedisClient_1.default.del(`game:${gameId}:player:${id}:disconnected`);
                 }
-                const recoveredPromise = yield this.recoverGames(gameId);
-                console.log(`recovered promise is ${recoveredPromise}`);
-                const value = yield recoveredPromise.resolve();
-                console.log(`value is ${value}`);
-                if (value.done === true) {
-                    console.log("game recovered");
-                    return;
-                }
+                // Re-add participant
+                yield webSocketHandler.addParticipant(gameId, socket);
+                return;
             }
             this.addHandler(socket);
         });
@@ -115,14 +124,26 @@ class GameManager {
     removeUser(socket) {
         return __awaiter(this, void 0, void 0, function* () {
             console.log("inside remove user");
-            const user = this.users.filter((user) => user !== socket);
-            if (this.pendingUser === socket) {
-                this.pendingUser = null;
-            }
-            this.games = this.games.filter((game) => game.player1 !== socket && game.player2 !== socket);
             const email = socket._userEmail.replace(/^"|"$/g, '');
-            const id = this.getIdOfUser(email);
-            RedisClient_1.default.del(`user:${id}:game`);
+            const id = yield this.getIdOfUser(email);
+            const gameId = yield RedisClient_1.default.get(`user:${id}:game`);
+            if (gameId) {
+                console.log(`User ${email} disconnected from game ${gameId}`);
+                //Mark the player as disconnected in Redis
+                yield RedisClient_1.default.set(`game:${gameId}:player:${id}:disconnected`, "true");
+                // Set a TTL (time-to-live) so the game doesn’t stay forever
+                yield RedisClient_1.default.expire(`game:${gameId}:player:${id}:disconnected`, 300);
+                const game = this.games.find(g => g.gameId === gameId);
+                if (game) {
+                    const player1Disconnected = yield RedisClient_1.default.get(`game:${gameId}:player:${game === null || game === void 0 ? void 0 : game.player1Id}:disconnected`);
+                    const player2Disconnected = yield RedisClient_1.default.get(`game:${gameId}:player:${game === null || game === void 0 ? void 0 : game.player2Id}:disconnected`);
+                    if (player1Disconnected && player2Disconnected) {
+                        console.log(`Both players disconnected. Cleaning up game ${gameId}`);
+                        yield RedisClient_1.default.del(`game:${gameId}`);
+                        this.games = this.games.filter(g => g.gameId !== gameId);
+                    }
+                }
+            }
         });
     }
     addHandler(socket) {
@@ -134,8 +155,6 @@ class GameManager {
                 }
                 else if (this.pendingUser) {
                     //start the game
-                    console.log("(socket as any)._userEmail", socket._userEmail);
-                    console.log("(this.pendingUser as any)._userEmail", this.pendingUser._userEmail);
                     const player1Email = (socket._userEmail).replace(/^"|"$/g, '');
                     const player2Email = (this.pendingUser._userEmail).replace(/^"|"$/g, '');
                     const player1Id = yield client.user.findUnique({
@@ -159,7 +178,6 @@ class GameManager {
                     console.log("player2Id", player2Id);
                     const game = yield Game_1.Game.create(this.pendingUser, socket, player1Id === null || player1Id === void 0 ? void 0 : player1Id.id, player2Id === null || player2Id === void 0 ? void 0 : player2Id.id);
                     this.games.push(game);
-                    console.log(`game id is ${game.gameId} and going inside addParticipant`);
                     yield webSocketHandler.addParticipant, (game.gameId, this.pendingUser);
                     yield webSocketHandler.addParticipant(game.gameId, socket);
                     this.countTotalGames += 1;
@@ -182,9 +200,6 @@ class GameManager {
                 // console.log(socket);
                 const game = this.games.find((game) => game.player1 === socket || game.player2 === socket);
                 if (game) {
-                    console.log("inside game");
-                    console.log("----------------------");
-                    console.log("game inside move ", game);
                     game.makeMove(socket, message.payload);
                     console.log(`Publishing game state for game ${game.gameId}`);
                     if (game.gameId) {

@@ -24,10 +24,13 @@ export class WebSocketHandler {
     const email = (socket as any)._userEmail.replace(/^"|"$/g, '');
     // const email = "abc@gmail.com";
     console.log("email",email);
+    // TODO: why are we rpushing the email to the list of participants in redis? is it correct
     await RedisClient.rpush(`game:${gameId}:participants`, email);
 
-    await prisma.participant.create({
-      data: { gameId, userEmail: email }
+    await prisma.participant.upsert({
+      where:{gameId_userEmail:{gameId:gameId,userEmail:email}},
+      create:{gameId:gameId,userEmail:email,createdAt:new Date()},
+      update:{gameId:gameId,userEmail:email}
     });
     count++;
     console.log(`added participant ${email} to game ${gameId} and count is ${count}`);

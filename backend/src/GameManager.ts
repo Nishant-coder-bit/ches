@@ -12,6 +12,9 @@ export class GameManager {
 
   private users: WebSocket[];
   private countTotalGames: number = 0;
+
+  private player1Id: any;
+  private player2Id: any;
   constructor() {
     this.games = [];
     this.pendingUser = null;
@@ -19,6 +22,7 @@ export class GameManager {
   }
   // utility function to get id of user
   async getIdOfUser(email:string){
+    email = email.replace(/^"|"$/g, '');
     const user = await client.user.findUnique({
       where: { email: email },
       select: { id: true }
@@ -32,25 +36,35 @@ export class GameManager {
     this.users.push(socket);
     const email = (socket as any)._userEmail.replace(/^"|"$/g, '');
 
-    const id = this.getIdOfUser(email);
- 
+    const id = await this.getIdOfUser(email);
+    if(!id){
+      return;
+    }
     const gameId = await RedisClient.get(`user:${id}:game`); 
    
     if (gameId) {
       const gameState = await RedisClient.get(`game:${gameId}`);
-      
+      console.log(`gameState is ${gameState}`);
       if (gameState) {
-        // Send restored state to user
-        socket.send(JSON.stringify({ type: INIT_GAME, payload: JSON.parse(gameState) })); 
+        const parsedGameState = JSON.parse(gameState);
+       
+         console.log(`parsedGameState is ${parsedGameState.player1Id} and ${parsedGameState.player2Id}`);
+        // Determine player color
+        const playerColor = parsedGameState.player1Id === id ? "white" : "black";
+  
+        // Send restored state with color
+        socket.send(JSON.stringify({ 
+          type: INIT_GAME, 
+          payload: { ...parsedGameState } ,
+          turn: parsedGameState.turn, 
+        }));
+  
+         // Remove disconnection marker
+         await RedisClient.del(`game:${gameId}:player:${id}:disconnected`);
       }
-
-     const recoveredPromise =  await this.recoverGames(gameId);
- 
-      const value = await recoveredPromise.resolve();
-      if (value.done === true) {
-        console.log("game recovered");
+         // Re-add participant
+        await webSocketHandler.addParticipant(gameId, socket);
         return;
-      }
     }
      
     this.addHandler(socket);
@@ -77,17 +91,33 @@ export class GameManager {
   
   async removeUser(socket: WebSocket) {
     console.log("inside remove user");
-    const user = this.users.filter((user) => user !== socket);
-    if (this.pendingUser === socket) {
-      this.pendingUser = null;
-    }
-    this.games = this.games.filter(
-      (game) => game.player1 !== socket && game.player2 !== socket
-    );
+ 
     const email = (socket as any)._userEmail.replace(/^"|"$/g, '');
-    const id = this.getIdOfUser(email);
-    RedisClient.del(`user:${id}:game`); 
+    const id = await this.getIdOfUser(email);
+    const gameId = await RedisClient.get(`user:${id}:game`);
+   
+    if(gameId){
+      console.log(`User ${email} disconnected from game ${gameId}`);
+
+      //Mark the player as disconnected in Redis
+      await RedisClient.set(`game:${gameId}:player:${id}:disconnected`, "true");
+
+       // Set a TTL (time-to-live) so the game doesn’t stay forever
+       await RedisClient.expire(`game:${gameId}:player:${id}:disconnected`, 300);
+
+       const game = this.games.find(g => g.gameId === gameId);
+       if(game){
+        const player1Disconnected = await RedisClient.get(`game:${gameId}:player:${game?.player1Id}:disconnected`);
+        const player2Disconnected = await RedisClient.get(`game:${gameId}:player:${game?.player2Id}:disconnected`);
+        
+        if (player1Disconnected && player2Disconnected) {
+          console.log(`Both players disconnected. Cleaning up game ${gameId}`);
+          await RedisClient.del(`game:${gameId}`);
+          this.games = this.games.filter(g => g.gameId !== gameId);  
+       }
+    }
   }
+}
   
   private addHandler(socket: WebSocket) {
     socket.on("message", async (data) => {
@@ -123,7 +153,6 @@ export class GameManager {
             },
           });
             console.log("player2Id",player2Id);
-
           const game =await Game.create(this.pendingUser, socket, player1Id?.id, player2Id?.id);
           this.games.push( game);
           await webSocketHandler.addParticipant,(game.gameId,this.pendingUser);

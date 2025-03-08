@@ -11,9 +11,9 @@ export const gameService = {
     return prisma.game.findUnique({ where: { id: gameId } });
   },
 
-  // async recoverGame(gameId: string) {
-  //   return prisma.game.findUnique({ where: { id: gameId } });
-  // },
+  async recoverGame(gameId: string) {
+    return prisma.game.findUnique({ where: { id: gameId } });
+  },
 
   async addSpectator(gameId: string) {
     console.log(`Adding spectator to game: ${gameId}`);

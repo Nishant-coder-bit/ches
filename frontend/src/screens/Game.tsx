@@ -1,8 +1,8 @@
-import  { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Chessboard } from "react-chessboard";
 import { Chess } from "chess.js"; // For handling chess logic
 import { useSocket } from "../hooks/useSocket";
-import { useLocation } from "react-router-dom";
+
 import axios from "axios";
 import { MoveState } from "../components/MoveState";
 
@@ -11,177 +11,186 @@ export const INVALID_MOVE = "invalid_move";
 export const MOVE = "move";
 export const GAME_OVER = "game_over";
 
-
 type Move = {
-  fen: string;
-  pgn: string;
-  move: any;
+  from: string;
+  to: string;
 };
-type moves = {
-  from:string,
-  to:string
-}
-type User = {
-  name:string,
-  email:string
-}
-const movesArray:moves[] = [];
 
+type User = {
+  name: string;
+  email: string;
+};
 
 export const Game = () => {
-  const [game] = useState(new Chess());
+  const [game, setGame] = useState(new Chess());
   const [fen, setFen] = useState("start"); // FEN string to represent the board
   const [started, setStarted] = useState(false);
   const [history, setHistory] = useState<string[]>([]);
   const [games, setGames] = useState<any[]>([]);
   const [boardKey, setBoardKey] = useState(0); // Key to force re-render
-  const [movesState, setMovesState] = useState<moves[]>([]);
+  const [movesState, setMovesState] = useState<Move[]>([]);
   const [playerColor, setPlayerColor] = useState("white");
-  const location = useLocation();
-   const [user,setUser] = useState<User>();
+  const [user, setUser] = useState<User | null>(null);
 
-   console.log("getting user inside game page",user);  
+  const { socket, isConnected } = useSocket();
 
+  console.log("getting user inside game page", user);
 
-  const socket = useSocket();
-  
   async function getUserInfo() {
-     const token = localStorage.getItem("token");
-     if(!token){
-       throw new Error("No token found");
-       // return to login page and refresh the background
-     }
-     try{
-        const response = await axios.get("http://localhost:8080/user/userInfo", {
-          headers: {
-            authorization: `Bearer ${token}`,
-          },
-        });
-        console.log("user info", response.data);
+    const token = localStorage.getItem("token");
+    if (!token) {
+      console.error("No token found");
+      return;
+    }
 
-        setUser(response.data);
+    try {
+      const response = await axios.get("http://localhost:8080/user/userInfo", {
+        headers: {
+          authorization: `Bearer ${token}`,
+        },
+      });
 
-     }
-      catch(e){
-        console.log("error in fetching user info",e);
-      }
+      console.log("user info", response.data);
+      setUser(response.data);
+    } catch (e) {
+      console.error("Error fetching user info", e);
+    }
   }
-
 
   async function getAllGames() {
     const token = localStorage.getItem("token");
     if (!token) {
-      throw new Error("No token found");
+      console.error("No token found");
+      return;
     }
 
-    try{
-        // Set the Authorization header
+    try {
       const response = await axios.get("http://localhost:8080/user/userGameInfo", {
         headers: {
           authorization: `Bearer ${token}`,
         },
       });
-        
-    console.log("games ", response.data);
-    setGames(response.data);
-    }catch(e){
-      console.log("error in fetching games",e);
+
+      console.log("games ", response.data);
+      setGames(response.data);
+    } catch (e) {
+      console.error("Error fetching games", e);
     }
-  
- 
+  }
+
+  function parsePGNToMoves(pgn: string): Move[] {
+    const chess = new Chess();
+    chess.loadPgn(pgn); // Load PGN
+
+    const history = chess.history({ verbose: true }); // Get moves as objects
+    console.log("history move ", history);
+    return history.map((move) => ({
+      from: move.from,
+      to: move.to,
+    }));
   }
 
   useEffect(() => {
     if (!socket) return;
-    getUserInfo();// to get the name and email based on login token from database directly
+
+    getUserInfo();
     getAllGames();
+
+    socket.onopen = () => {
+      console.log("Connected to WebSocket");
+      socket.send(JSON.stringify({ type: "reconnect_request" }));
+    };
+
     socket.onmessage = (event) => {
       const message = JSON.parse(event.data.toString());
       console.log("message", message);
+
       switch (message.type) {
         case INIT_GAME:
           setStarted(true);
           setPlayerColor(message.color);
           setFen(message.payload.fen);
-          setMovesState(JSON.parse(message.payload.moves));
-          console.log("started after init",started);
-          console.log("game initialized");
-          console.log("game started",started);
+          console.log("moves", message.payload.moves);
+          setMovesState(parsePGNToMoves(message.payload.moves)); // Corrected parsing
           break;
+
         case MOVE:
           const move = message.payload;
           game.move(move);
-        
           setHistory((prevHistory) => [...prevHistory, game.fen()]); // Update history
           setFen(game.fen());
-          console.log("move made");
           break;
+
         case INVALID_MOVE:
-          console.log("invalid move");
+          console.log("Invalid move");
           const previousFen = history[history.length - 2]; // Get the state before the invalid move
           if (previousFen) {
             setFen(previousFen);
-            setBoardKey(prevKey => prevKey + 1); // Force re-render
           } else {
             setFen("start");
-            setBoardKey(prevKey => prevKey + 1); // Force re-render
           }
+          setBoardKey((prevKey) => prevKey + 1); // Force re-render
           console.log("Reverted to previous state:", previousFen);
+          break;
+
         case GAME_OVER:
-          console.log("game is over");
+          console.log("Game is over");
           setFen("start");
           setStarted(false);
-          
           break;
-        case GAME_OVER:
-          console.log("game is over");
+
+        default:
+          console.warn("Unhandled message type:", message.type);
           break;
       }
     };
   }, [socket, game, history]);
 
   // Function to handle moves
-  const handleMove = (move: { from: any; to: any }):boolean => { 
-  try{
-    const color = game.get(move.from);
-    let newcolor = "";
-    const gameColor = game.turn();
-      gameColor === "w"? newcolor = "white":newcolor = "black";
-      console.log("game color",gameColor);
-      console.log("player color",playerColor);
-      console.log("color",color);
-    if(newcolor!== playerColor){
-      console.log("not allowed wrong color player ")
+  const handleMove = (move: Move): boolean => {
+    try {
+      const piece = game.get(move.from);
+      const gameColor = game.turn();
+      const playerTurnColor = gameColor === "w" ? "white" : "black";
+
+      console.log("Game turn color:", gameColor);
+      console.log("Player color:", playerColor);
+      console.log("Piece at from:", piece);
+
+      if (playerTurnColor !== playerColor) {
+        console.warn("Not allowed: Wrong color player");
+        return false;
+      }
+
+      const result = game.move({
+        from: move.from,
+        to: move.to,
+      });
+
+      if (!result) {
+        console.warn("Invalid move");
+        return false;
+      }
+
+      setMovesState((prevMoves) => [...prevMoves, move]); // Correct way to update state
+      console.log("Moves Array:", movesState);
+
+      socket?.send(
+        JSON.stringify({
+          type: "move",
+          payload: move,
+        })
+      );
+
+      setHistory((prevHistory) => [...prevHistory, game.fen()]);
+      setFen(game.fen());
+      return true;
+    } catch (e) {
+      console.error("Invalid move attempted locally", e);
+      setFen(history[history.length - 1] || "start");
+      setBoardKey((prevKey) => prevKey + 1); // Force re-render
       return false;
     }
-    const result = game.move({
-      from: move.from,
-      to: move.to,
-    });
-    
-    movesArray.push(move);
-    setMovesState(movesArray);
-    console.log("movesArray",movesArray);
-    socket?.send(JSON.stringify({
-      type:"move",
-      payload:{
-         from:move.from,
-         to:move.to
-  
-      }
-   }))    
-        setHistory((prevHistory) => [...prevHistory, game.fen()]); // Update history
-        setFen(game.fen());
-        return true;
-  } 
-  catch(e){
-    console.log("Invalid move attempted locally");
-    const previousFen = history[history.length - 1]; // Revert to previous state
-    setFen(previousFen || "start");
-    setBoardKey(prevKey => prevKey + 1); // Force re-ren
-    return false;
-  }
-  
   };
 
   return (
@@ -190,43 +199,33 @@ export const Game = () => {
       <div className="flex flex-col items-center justify-center md:w-3/4 p-6">
         <h1 className="text-3xl font-bold text-gray-800 mb-4">Chess Game</h1>
         <Chessboard
-  key={boardKey}
-  position={fen}
-  onPieceDrop={(sourceSquare, targetSquare) => 
-    handleMove({ from: sourceSquare, to: targetSquare })
-  }
-  boardWidth={480}
-  boardStyle={{
-    borderRadius: "10px",
-    boxShadow: "0 5px 15px rgba(0,0,0,0.2)",
-  }}
-/>
+          key={boardKey}
+          position={fen}
+          onPieceDrop={(sourceSquare, targetSquare) =>
+            handleMove({ from: sourceSquare, to: targetSquare })
+          }
+          boardWidth={480}
+          boardStyle={{
+            borderRadius: "10px",
+            boxShadow: "0 5px 15px rgba(0,0,0,0.2)",
+          }}
+        />
       </div>
 
       {/* Utility Area */}
       <div className="flex flex-col md:w-1/4 p-6 bg-white shadow-lg rounded-lg">
-        {/* Play Button */}
         {!started && (
           <button
             onClick={() => {
-              console.log("started",started);
-              socket?.send(
-                JSON.stringify({
-                  type: INIT_GAME,
-                })
-              );
-              console.log("game initialized");
+              console.log("Starting game...");
+              socket?.send(JSON.stringify({ type: INIT_GAME }));
             }}
             className="px-6 py-3 bg-blue-600 text-white rounded-md text-lg font-medium hover:bg-blue-700 transition duration-300"
           >
             Play
           </button>
         )}
-        {/*moves section*/}
-
-        {started && (
-            <MoveState movesState={movesState}/>
-        )}
+        {started && <MoveState movesState={movesState} />}
       </div>
     </div>
   );

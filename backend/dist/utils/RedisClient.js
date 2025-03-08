@@ -63,6 +63,11 @@ class RedisClient {
             yield this.client.connect();
         });
     }
+    expire(key, value) {
+        return __awaiter(this, void 0, void 0, function* () {
+            yield this.client.expire(key, value);
+        });
+    }
     reconnect() {
         return __awaiter(this, void 0, void 0, function* () {
             yield this.client.disconnect();
