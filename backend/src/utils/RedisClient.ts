@@ -53,6 +53,6 @@ class RedisClient {
     await this.connect();
   }
 }
-export const RedisPublisher = new Redis(); // For publishing game updates
-export const RedisSubscriber = new Redis(); // For subscribing to game updates
+export const RedisPublisher = new Redis(); 
+export const RedisSubscriber = new Redis(); 
 export default new RedisClient();

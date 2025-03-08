@@ -36,7 +36,7 @@ export class Game {
     try {
       this.player1Id = player1Id;
       this.player2Id = player2Id;
-      console.log("inside Game Class constructor") 
+     
       const game = await client.game.create({
         data: {
 
@@ -56,7 +56,7 @@ export class Game {
   private initializeGame(player1Id: number, player2Id: number,gameId:string) {
     this.player1.send(JSON.stringify({ type: INIT_GAME, color: "white" }));
     this.player2.send(JSON.stringify({ type: INIT_GAME, color: "black" }));
-    console.log("inside initialize game method")
+   
     RedisClient.set(`game:${this.gameId}`, JSON.stringify(this.board.fen()));
     RedisClient.set(`user:${player1Id}:game`, gameId);
     RedisClient.set(`user:${player2Id}:game`, gameId);
@@ -92,8 +92,7 @@ export class Game {
       return;
     }
     try {
-      console.log("------------------");
-      console.log("move",move);
+    
       this.board.move(move); 
       this.broadcastMove(move);
       const winner = this.board.turn() === "w" ? this.player1Id :this.player2Id;

@@ -70,6 +70,6 @@ class RedisClient {
         });
     }
 }
-exports.RedisPublisher = new ioredis_1.default(); // For publishing game updates
-exports.RedisSubscriber = new ioredis_1.default(); // For subscribing to game updates
+exports.RedisPublisher = new ioredis_1.default();
+exports.RedisSubscriber = new ioredis_1.default();
 exports.default = new RedisClient();

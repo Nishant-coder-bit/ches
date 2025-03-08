@@ -12,7 +12,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.gameService = void 0;
 const client_1 = require("@prisma/client");
 const RedisClient_1 = require("../utils/RedisClient");
-// import { WebSocketHandler } from '../WebSocketHandler';
 const prisma = new client_1.PrismaClient();
 exports.gameService = {
     getGame(gameId) {
@@ -26,7 +25,6 @@ exports.gameService = {
     addSpectator(gameId) {
         return __awaiter(this, void 0, void 0, function* () {
             console.log(`Adding spectator to game: ${gameId}`);
-            // Subscribe to Redis game updates
             try {
                 RedisClient_1.RedisSubscriber.subscribe(gameId, (err) => {
                     if (err)
@@ -44,7 +42,7 @@ exports.gameService = {
             try {
                 const games = yield prisma.game.findMany({
                     where: { status: "ongoing" },
-                    select: { id: true, player1Id: true, player2Id: true }, // Adjust based on your schema
+                    select: { id: true, player1Id: true, player2Id: true },
                 });
                 console.log(`games are  ${games}`);
                 return games;

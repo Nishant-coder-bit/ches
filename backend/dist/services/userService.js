@@ -27,8 +27,6 @@ exports.userService = {
     },
     getUserGames(email) {
         return __awaiter(this, void 0, void 0, function* () {
-            console.log("reached inside get user games");
-            console.log("user email", email);
             const user = yield prisma.user.findFirst({
                 where: {
                     email
@@ -39,13 +37,11 @@ exports.userService = {
                 }
             });
             console.log("user info", user);
-            // if (!user) {
-            //   throw new Error('User not found');
-            // }
+            if (!user) {
+                throw new Error('User not found');
+            }
             const gamesAsPlayer1 = yield prisma.game.findMany({ where: { player1Id: user === null || user === void 0 ? void 0 : user.id } });
-            console.log("games as player 1", gamesAsPlayer1);
             const gamesAsPlayer2 = yield prisma.game.findMany({ where: { player2Id: user === null || user === void 0 ? void 0 : user.id } });
-            console.log("games as player 2", gamesAsPlayer2);
             console.log("games as player 1 and 2", [...gamesAsPlayer1, ...gamesAsPlayer2]);
             return [...gamesAsPlayer1, ...gamesAsPlayer2];
         });

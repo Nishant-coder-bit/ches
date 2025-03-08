@@ -72,11 +72,8 @@ class GameManager {
         return __awaiter(this, void 0, void 0, function* () {
             this.users.push(socket);
             const email = socket._userEmail.replace(/^"|"$/g, '');
-            console.log("inside add user", email);
             const id = this.getIdOfUser(email);
-            console.log(`id of user is ${id}`);
-            const gameId = yield RedisClient_1.default.get(`user:${id}:game`); // Check if user has an active game
-            console.log("gameId from redis client", gameId);
+            const gameId = yield RedisClient_1.default.get(`user:${id}:game`);
             if (gameId) {
                 const gameState = yield RedisClient_1.default.get(`game:${gameId}`);
                 console.log(`gameState from redis client is ${gameState}`);
@@ -203,7 +200,6 @@ class GameManager {
             console.log(`inside game manager add spectator `);
             socket.on("message", (data) => __awaiter(this, void 0, void 0, function* () {
                 const message = JSON.parse(data.toString());
-                console.log(`on message ${message}`);
                 if (message.type === Message_1.JOIN_SPECTATOR) {
                     const gameId = message.payload.gameId;
                     console.log("gameId inside join spectator", gameId);

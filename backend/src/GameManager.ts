@@ -31,23 +31,22 @@ export class GameManager {
   async addUser(socket: WebSocket) {
     this.users.push(socket);
     const email = (socket as any)._userEmail.replace(/^"|"$/g, '');
-    console.log("inside add user",email);
+
     const id = this.getIdOfUser(email);
-    console.log(`id of user is ${id}`);
-    const gameId = await RedisClient.get(`user:${id}:game`); // Check if user has an active game
-    console.log("gameId from redis client",gameId);
+ 
+    const gameId = await RedisClient.get(`user:${id}:game`); 
+   
     if (gameId) {
       const gameState = await RedisClient.get(`game:${gameId}`);
-      console.log(`gameState from redis client is ${gameState}`);
+      
       if (gameState) {
         // Send restored state to user
         socket.send(JSON.stringify({ type: INIT_GAME, payload: JSON.parse(gameState) })); 
       }
 
      const recoveredPromise =  await this.recoverGames(gameId);
-     console.log(`recovered promise is ${recoveredPromise}`);
+ 
       const value = await recoveredPromise.resolve();
-      console.log(`value is ${value}`);
       if (value.done === true) {
         console.log("game recovered");
         return;
@@ -99,9 +98,6 @@ export class GameManager {
         }
         else  if (this.pendingUser ) {
           //start the game
-          
-          console.log("(socket as any)._userEmail",(socket as any)._userEmail);
-          console.log("(this.pendingUser as any)._userEmail",(this.pendingUser as any)._userEmail);
          
           const player1Email =( (socket as any)._userEmail).replace(/^"|"$/g, '');
           const player2Email =( (this.pendingUser as any)._userEmail).replace(/^"|"$/g, '');
@@ -130,7 +126,6 @@ export class GameManager {
 
           const game =await Game.create(this.pendingUser, socket, player1Id?.id, player2Id?.id);
           this.games.push( game);
-          console.log(`game id is ${game.gameId} and going inside addParticipant`);
           await webSocketHandler.addParticipant,(game.gameId,this.pendingUser);
           await webSocketHandler.addParticipant(game.gameId, socket);
           this.countTotalGames += 1;
@@ -155,9 +150,6 @@ export class GameManager {
           (game) => game.player1 === socket || game.player2 === socket
         );
         if (game) {
-          console.log("inside game");
-          console.log("----------------------");
-          console.log("game inside move ", game);
           game.makeMove(socket, message.payload);
 
           console.log(`Publishing game state for game ${game.gameId}`);
@@ -175,7 +167,7 @@ export class GameManager {
     console.log(`inside game manager add spectator `)
      socket.on("message", async (data) => {
         const message = JSON.parse(data.toString());
-        console.log(`on message ${message}`);
+    
         if (message.type === JOIN_SPECTATOR) {
           const gameId = message.payload.gameId;
           console.log("gameId inside join spectator",gameId);
