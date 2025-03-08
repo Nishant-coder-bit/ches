@@ -27,10 +27,16 @@ exports.gameService = {
         return __awaiter(this, void 0, void 0, function* () {
             console.log(`Adding spectator to game: ${gameId}`);
             // Subscribe to Redis game updates
-            RedisClient_1.RedisSubscriber.subscribe(gameId, (err) => {
-                if (err)
-                    console.error(`Failed to subscribe to ${gameId}:`, err);
-            });
+            try {
+                RedisClient_1.RedisSubscriber.subscribe(gameId, (err) => {
+                    if (err)
+                        throw err;
+                });
+            }
+            catch (err) {
+                console.error(`Failed to subscribe to ${gameId}:`, err);
+                throw err;
+            }
         });
     },
     getOngoingGames() {
@@ -45,7 +51,7 @@ exports.gameService = {
             }
             catch (error) {
                 console.error("Error fetching ongoing games:", error);
-                return null;
+                throw error;
             }
         });
     },

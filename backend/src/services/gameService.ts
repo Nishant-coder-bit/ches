@@ -19,10 +19,17 @@ export const gameService = {
   async addSpectator(gameId: string) {
     console.log(`Adding spectator to game: ${gameId}`);
       // Subscribe to Redis game updates
-      RedisSubscriber.subscribe(gameId, (err) => {
-        if (err) console.error(`Failed to subscribe to ${gameId}:`, err);
-      });
-       
+      try{
+
+        RedisSubscriber.subscribe(gameId, (err) => {
+          if (err) throw err;
+        });
+      }catch(err){
+        console.error(`Failed to subscribe to ${gameId}:`, err);
+        throw err
+
+      }
+     
   },
 
   async getOngoingGames() {
@@ -35,7 +42,7 @@ export const gameService = {
        return games;
     } catch (error) {
       console.error("Error fetching ongoing games:", error);
-      return null;
+      throw error;
     }
   },
   

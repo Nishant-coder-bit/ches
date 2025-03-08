@@ -115,7 +115,7 @@ exports.userController = {
             }
             catch (e) {
                 console.log("error while login", e);
-                // res.status(500).send("Internal Server Error");  
+                res.status(500).send("Internal Server Error");
             }
         });
     },

@@ -4,10 +4,7 @@ class RedisClient {
   private client: Redis;
 
   constructor() {
-    this.client = new Redis();  // connect to 127.0.0.1:6379
-    // this.client.on('message', (channel:any, message:any) => {
-    //   console.log(`Received message from channel ${channel}: ${message}`);
-    // })
+    this.client = new Redis(); 
   }
   
 
@@ -22,8 +19,7 @@ class RedisClient {
   }
 
   async rpush(key: string, value: string): Promise<void> {
-     console.log("key-------->",key);
-     console.log("value---------------->",value);  
+ 
     await this.client.rpush(key, value);
   }
 

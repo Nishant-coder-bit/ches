@@ -44,7 +44,6 @@ exports.gameController = {
             try {
                 console.log("inside get ongoing games");
                 const games = yield gameService_1.gameService.getOngoingGames();
-                console.log(`games are ${games}`);
                 res.status(200).send(games);
             }
             catch (error) {

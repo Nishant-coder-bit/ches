@@ -2,8 +2,7 @@ import { Request, Response } from "express";
 import { userService } from "../services/userService";
 import { PrismaClient } from "@prisma/client";
 import jwt from "jsonwebtoken";
-import { signupSchema } from "../utils/Validation";
-import bcrypt from "bcryptjs";
+
 const client = new PrismaClient();
 
 export const userController = {
@@ -109,7 +108,7 @@ export const userController = {
     }catch(e){
 
       console.log("error while login", e);
-      // res.status(500).send("Internal Server Error");  
+      res.status(500).send("Internal Server Error");  
     }
    
   },

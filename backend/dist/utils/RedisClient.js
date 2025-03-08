@@ -16,10 +16,7 @@ exports.RedisSubscriber = exports.RedisPublisher = void 0;
 const ioredis_1 = __importDefault(require("ioredis"));
 class RedisClient {
     constructor() {
-        this.client = new ioredis_1.default(); // connect to 127.0.0.1:6379
-        // this.client.on('message', (channel:any, message:any) => {
-        //   console.log(`Received message from channel ${channel}: ${message}`);
-        // })
+        this.client = new ioredis_1.default();
     }
     set(key, value) {
         return __awaiter(this, void 0, void 0, function* () {
@@ -33,8 +30,6 @@ class RedisClient {
     }
     rpush(key, value) {
         return __awaiter(this, void 0, void 0, function* () {
-            console.log("key-------->", key);
-            console.log("value---------------->", value);
             yield this.client.rpush(key, value);
         });
     }

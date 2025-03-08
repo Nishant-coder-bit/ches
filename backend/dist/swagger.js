@@ -21,7 +21,7 @@ const swaggerOptions = {
             },
         ],
     },
-    apis: ["src/*.ts"], // Path to the API docs
+    apis: ["src/routes/*.ts"], // Path to the API docs
 };
 const swaggerSpec = (0, swagger_jsdoc_1.default)(swaggerOptions);
 // Function to setup Swagger in the Express app

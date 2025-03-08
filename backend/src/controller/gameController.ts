@@ -32,7 +32,7 @@ export const gameController = {
     try {
       console.log("inside get ongoing games");
      const games =  await gameService.getOngoingGames();
-     console.log(`games are ${games}`);
+    
       res.status(200).send(games);
     } catch (error) {
       res.status(500).send('Internal Server Error');
