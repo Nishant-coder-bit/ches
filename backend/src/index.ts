@@ -76,7 +76,7 @@ wss.on('connection', async function connection(ws, req:any) {
 
   
     }
-    gameManager.addSpectator(ws);
+    // gameManager.addSpectator(ws);
     ws.on('close', () => {
       if(token){
 

@@ -31,7 +31,7 @@ export const Game = () => {
   const [movesState, setMovesState] = useState<Move[]>([]);
   const [playerColor, setPlayerColor] = useState("white");
   const [user, setUser] = useState<User | null>(null);
-
+  const [turn, setTurn] = useState("white");
   const { socket, isConnected } = useSocket();
 
   console.log("getting user inside game page", user);
@@ -98,7 +98,10 @@ export const Game = () => {
 
     socket.onopen = () => {
       console.log("Connected to WebSocket");
-      socket.send(JSON.stringify({ type: "reconnect_request" }));
+      const gameId = localStorage.getItem("gameId");
+        if (gameId) {
+             socket.send(JSON.stringify({ type: "reconnect_request", gameId:gameId }));
+       }
     };
 
     socket.onmessage = (event) => {
@@ -110,14 +113,20 @@ export const Game = () => {
           setStarted(true);
           setPlayerColor(message.color);
           setFen(message.payload.fen);
-          console.log("moves", message.payload.moves);
+          localStorage.setItem("gameId", message.gameId); 
           setMovesState(parsePGNToMoves(message.payload.moves)); // Corrected parsing
+          const turnFromFen = message.payload.fen.split(" ")[1] === "w" ? "white" : "black";
+          setTurn(turnFromFen);
+          setGame(new Chess(message.payload.fen));
+          console.log("moves", message.payload.moves);
           break;
 
         case MOVE:
           const move = message.payload;
           game.move(move);
           setHistory((prevHistory) => [...prevHistory, game.fen()]); // Update history
+          const turnFromFe = game.fen().split(" ")[1] === "w" ? "white" : "black";
+          setTurn(turnFromFe);
           setFen(game.fen());
           break;
 
@@ -153,7 +162,7 @@ export const Game = () => {
       const gameColor = game.turn();
       const playerTurnColor = gameColor === "w" ? "white" : "black";
 
-      console.log("Game turn color:", gameColor);
+      console.log("Game turn color:", turn);
       console.log("Player color:", playerColor);
       console.log("Piece at from:", piece);
 
@@ -161,7 +170,7 @@ export const Game = () => {
         console.warn("Not allowed: Wrong color player");
         return false;
       }
-
+     
       const result = game.move({
         from: move.from,
         to: move.to,
@@ -174,11 +183,12 @@ export const Game = () => {
 
       setMovesState((prevMoves) => [...prevMoves, move]); // Correct way to update state
       console.log("Moves Array:", movesState);
-
+      
       socket?.send(
         JSON.stringify({
           type: "move",
           payload: move,
+          
         })
       );
 

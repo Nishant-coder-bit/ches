@@ -73,7 +73,7 @@ wss.on('connection', function connection(ws, req) {
                     gameManager.addUser(ws);
                 }
             }
-            gameManager.addSpectator(ws);
+            // gameManager.addSpectator(ws);
             ws.on('close', () => {
                 if (token) {
                     gameManager.removeUser(ws);

@@ -17,12 +17,14 @@ export function useSocket() {
       ws = new WebSocket(`${WS_URL}?token=${token}`);
 
       ws.onopen = () => {
-        console.log("WebSocket Connected");
+        console.log("WebSocket Connected")
         setIsConnected(true);
         setSocket(ws);
-
-        // If the player is reconnecting, request game state
-        ws.send(JSON.stringify({ type: "reconnect_request" }));
+           // Send reconnect request if needed
+          const gameId = localStorage.getItem("gameId");
+            if (gameId) {
+           ws.send(JSON.stringify({ type: "reconnect_request", gameId }));
+           }
       };
 
       ws.onclose = () => {

@@ -27,48 +27,65 @@ export class GameManager {
       where: { email: email },
       select: { id: true }
     });
+
     console.log("inside getIdOfUser",user?.id);
     return user?.id;
   }
 
 
   async addUser(socket: WebSocket) {
-    this.users.push(socket);
+    console.log("inside add handler")
+    this.users.push(socket);    
     const email = (socket as any)._userEmail.replace(/^"|"$/g, '');
-
+    console.log(`User email ${email} inside add User method`);
     const id = await this.getIdOfUser(email);
-    if(!id){
-      return;
-    }
-    const gameId = await RedisClient.get(`user:${id}:game`); 
-   
+    
+    if (!id) return;
+
+    // // Make sure to track users by their ID
+    // this.userSockets[id] = socket;
+
+    const gameId = await RedisClient.get(`user:${id}:game`);
     if (gameId) {
-      const gameState = await RedisClient.get(`game:${gameId}`);
-      console.log(`gameState is ${gameState}`);
-      if (gameState) {
-        const parsedGameState = JSON.parse(gameState);
-       
-         console.log(`parsedGameState is ${parsedGameState.player1Id} and ${parsedGameState.player2Id}`);
-        // Determine player color
-        const playerColor = parsedGameState.player1Id === id ? "white" : "black";
-  
-        // Send restored state with color
-        socket.send(JSON.stringify({ 
-          type: INIT_GAME, 
-          payload: { ...parsedGameState } ,
-          turn: parsedGameState.turn, 
-        }));
-  
-         // Remove disconnection marker
-         await RedisClient.del(`game:${gameId}:player:${id}:disconnected`);
-      }
-         // Re-add participant
-        await webSocketHandler.addParticipant(gameId, socket);
-        return;
-    }
-     
-    this.addHandler(socket);
+        const gameState = await RedisClient.get(`game:${gameId}`);
+        
+        if (gameState) {
+            const parsedGameState = JSON.parse(gameState);
+            const pgnOfGame = await client.game.findUnique({
+              where: {
+                id: gameId,
+              },
+              select: {
+                moves: true,
+                fen:true
+              },
+           })
+            // Determine player color
+            const playerColor = parsedGameState.player1Id === id ? "black" : "white";
+
+            // Send restored state ONLY to the correct user
+            socket.send(JSON.stringify({ 
+                type: INIT_GAME,
+                payload: { 
+                    moves:  pgnOfGame?.moves,
+                     gameId:gameId,
+                     fen: pgnOfGame?.fen
+                },
+               
+                color: playerColor
+            }));
+
+            // Remove disconnection marker
+            await RedisClient.del(`game:${gameId}:player:${id}:disconnected`);
+        }
+        console.log(`User ${email} reconnected to game ${gameId}`);
+      // Re-add participant safely (without overwriting the wrong user)
+      await webSocketHandler.addParticipant(gameId, socket);
+ 
   }
+  console.log("before going to game handler")
+  this.addHandler(socket);
+}
   async recoverGames(gameId: string):Promise<any> {
     console.log("inside recover games");
     if (gameId) {
@@ -91,7 +108,18 @@ export class GameManager {
   
   async removeUser(socket: WebSocket) {
     console.log("inside remove user");
- 
+    this.users = this.users.filter((user) => user !== socket);
+
+    if (this.pendingUser === socket) {
+       console.log("Player left while waiting for another player to join pending user");
+        this.pendingUser = null;
+    } 
+
+
+    // this.games = this.games.filter(
+    //   (game) => game.player1 !== socket && game.player2 !== socket
+    // );
+
     const email = (socket as any)._userEmail.replace(/^"|"$/g, '');
     const id = await this.getIdOfUser(email);
     const gameId = await RedisClient.get(`user:${id}:game`);
@@ -112,17 +140,21 @@ export class GameManager {
         
         if (player1Disconnected && player2Disconnected) {
           console.log(`Both players disconnected. Cleaning up game ${gameId}`);
-          await RedisClient.del(`game:${gameId}`);
-          this.games = this.games.filter(g => g.gameId !== gameId);  
+          
+          // this.games = this.games.filter(g => g.gameId !== gameId);  
        }
     }
   }
 }
   
   private addHandler(socket: WebSocket) {
+    console.log("inside add handler");
     socket.on("message", async (data) => {
+
       const message = JSON.parse(data.toString());
+      console.log("message",message);
       if (message.type === INIT_GAME) {
+        console.log("inside init game");
         if(this.pendingUser === socket){
           console.log("try playing with new player , this is not allowed");
         }
@@ -173,18 +205,70 @@ export class GameManager {
       }
 
       if (message.type === MOVE) {
-        console.log(this.users);
-        // console.log(socket);
+        // console.log(this.users);
+        console.log("inside make move")
+        console.log("games",this.games);
+      
+        const email = (socket as any)._userEmail.replace(/^"|"$/g, '');
         const game = this.games.find(
-          (game) => game.player1 === socket || game.player2 === socket
+          (game) => (game.player1 as any)._userEmail.replace(/^"|"$/g, '')=== email || (game.player2 as any)._userEmail.replace(/^"|"$/g, '') === email
         );
+        console.log(`printing game inside make move ${game}`);
         if (game) {
+         
+            if ((game.player1 as any)._userEmail.replace(/^"|"$/g, '')=== email) game.player1 = socket;
+            if ((game.player2 as any)._userEmail.replace(/^"|"$/g, '') === email) game.player2 = socket;
+          
+          
           game.makeMove(socket, message.payload);
 
           console.log(`Publishing game state for game ${game.gameId}`);
           if(game.gameId){
-            console.log(`message is ${JSON.stringify(message)}`);
+          
             await RedisPublisher.publish(game.gameId, JSON.stringify({type:"move",payload:message.payload,game:game}));
+          }
+        }
+      }
+
+      if (message.type === "reconnect_request") {
+         console.log("inside reconnect request");
+        const email = (socket as any)._userEmail.replace(/^"|"$/g, "");
+        const id = await this.getIdOfUser(email);
+        const gameId = await RedisClient.get(`user:${id}:game`);
+      
+        if (gameId) {
+          const gameState = await RedisClient.get(`game:${gameId}`);
+            
+          if (gameState) {
+            const parsedState = JSON.parse(gameState);
+            const pgnOfGame = await client.game.findUnique({
+              where: {
+                id: gameId,
+              },
+              select: {
+                moves: true,
+                fen:true
+              },
+           })
+            const playerColor = parsedState.player1Id === id ? "black" : "white";
+    
+            // Send restored game state
+            socket.send(
+              JSON.stringify({
+                type: INIT_GAME,
+                payload: { moves: pgnOfGame?.moves , fen: pgnOfGame?.fen ,gameId:gameId},
+               
+                gameId:gameId,
+                color: playerColor,
+              })
+            );
+    
+            // Remove the disconnection marker
+            await RedisClient.del(`game:${gameId}:player:${id}:disconnected`);
+    
+            // Re-add player to WebSocket handler
+            await webSocketHandler.addParticipant(gameId, socket);
+            return;
           }
         }
       }

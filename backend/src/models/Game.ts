@@ -55,14 +55,14 @@ export class Game {
     }
   }
   private initializeGame(player1Id: number, player2Id: number,gameId:string) {
-    this.player1.send(JSON.stringify({ type: INIT_GAME, color: "white" }));
-    this.player2.send(JSON.stringify({ type: INIT_GAME, color: "black" }));
+    this.player1.send(JSON.stringify({ type: INIT_GAME, color: "white" ,gameId:gameId,playerId:player1Id}));
+    this.player2.send(JSON.stringify({ type: INIT_GAME, color: "black",gameId:gameId,playerId:player2Id}));
      console.log(`inside initialize game and gameId is ${gameId} and player1Id is ${player1Id} and player2Id is ${player2Id}`);
      RedisClient.set(`game:${this.gameId}`, JSON.stringify({
       fen: this.board.fen(),
       player1Id: this.player1Id,
       player2Id: this.player2Id,
-      turn: this.board.turn() === "w"? "black":"white"
+      
     }));
     RedisClient.set(`user:${player1Id}:game`, gameId);
     RedisClient.set(`user:${player2Id}:game`, gameId);
@@ -88,20 +88,22 @@ export class Game {
         moves: this.board.pgn(),
         player1Id: this.player1Id,
         player2Id: this.player2Id,
-        turn: this.board.turn() === "w"? "black":"white"
+      
       })); // Update game state in Redis
     }
+    const email = (socket as any)._userEmail.replace(/^"|"$/g, '');
+    console.log(`User email ${email} inside makeMove method`);
     //validate type of move using zod
-    if (this.moveCount % 2 === 0 && socket != this.player1) {
+    if (this.moveCount % 2 === 0 && email !=(this.player1 as any)._userEmail.replace(/^"|"$/g, '')) {
       console.log("early return");
       return;
     }
-    if (this.moveCount % 2 === 1 && socket != this.player2) {
+    if (this.moveCount % 2 === 1 && email !=(this.player2 as any)._userEmail.replace(/^"|"$/g, '')) {
       console.log("early return");
       return;
     }
     try {
-    
+      console.log(`making move ${move} for player ${this.board.turn()}`); 
       this.board.move(move); 
       this.broadcastMove(move);
       const winner = this.board.turn() === "w" ? this.player1Id :this.player2Id;
@@ -133,11 +135,20 @@ export class Game {
     this.moveCount++;
   }
 
-  private handleGameOver() { 
+  private async handleGameOver() { 
      // need to save the winner in the database of the game 
     
      if(this.gameId){
         const winner = this.board.turn() === "w" ? "black" : "white";
+        await client.game.update({
+          where:{
+            id:this.gameId
+          },
+          data:{
+            status:"finished",
+  
+          }
+        })
         RedisClient.set(`game:${this.gameId}:winner`, winner);
      }
     this.player1.send(
@@ -160,6 +171,7 @@ export class Game {
     console.log("message sent to player2");
   }
   private broadcastMove(move: { from: string; to: string }) {
+    console.log("broadcasting move", move);
     if (this.moveCount % 2 === 0) {
       this.player2.send(
         JSON.stringify({

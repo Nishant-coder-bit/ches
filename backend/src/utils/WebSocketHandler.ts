@@ -7,7 +7,7 @@ const prisma = new PrismaClient();
 export class WebSocketHandler {
   private gameParticipants: Map<string, Set<WebSocket>>;
   private spectators: Map<string, Set<WebSocket>>;
-
+  private countAddParticipantsCall = 0;
   constructor() {
     this.gameParticipants = new Map();
     this.spectators = new Map();
@@ -15,15 +15,14 @@ export class WebSocketHandler {
 
   async addParticipant(gameId: any, socket: WebSocket): Promise<void> {
     console.log(`inside add participant and gameId is ${gameId} and socket is ${socket}`);
-    let count = 0;
+    
     if (!this.gameParticipants.has(gameId)) {
       this.gameParticipants.set(gameId, new Set());
     }
     this.gameParticipants.get(gameId)?.add(socket);
 
     const email = (socket as any)._userEmail.replace(/^"|"$/g, '');
-    // const email = "abc@gmail.com";
-    console.log("email",email);
+ 
     // TODO: why are we rpushing the email to the list of participants in redis? is it correct
     await RedisClient.rpush(`game:${gameId}:participants`, email);
 
@@ -32,8 +31,8 @@ export class WebSocketHandler {
       create:{gameId:gameId,userEmail:email,createdAt:new Date()},
       update:{gameId:gameId,userEmail:email}
     });
-    count++;
-    console.log(`added participant ${email} to game ${gameId} and count is ${count}`);
+    this.countAddParticipantsCall++;
+    console.log(`added participant ${email} to game ${gameId} and count is ${this.countAddParticipantsCall}`);
   }
 
   async addSpectator(gameId: string, ws: WebSocket) {

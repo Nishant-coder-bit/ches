@@ -58,14 +58,13 @@ class Game {
         });
     }
     initializeGame(player1Id, player2Id, gameId) {
-        this.player1.send(JSON.stringify({ type: Message_1.INIT_GAME, color: "white" }));
-        this.player2.send(JSON.stringify({ type: Message_1.INIT_GAME, color: "black" }));
+        this.player1.send(JSON.stringify({ type: Message_1.INIT_GAME, color: "white", gameId: gameId, playerId: player1Id }));
+        this.player2.send(JSON.stringify({ type: Message_1.INIT_GAME, color: "black", gameId: gameId, playerId: player2Id }));
         console.log(`inside initialize game and gameId is ${gameId} and player1Id is ${player1Id} and player2Id is ${player2Id}`);
         RedisClient_1.default.set(`game:${this.gameId}`, JSON.stringify({
             fen: this.board.fen(),
             player1Id: this.player1Id,
             player2Id: this.player2Id,
-            turn: this.board.turn() === "w" ? "black" : "white"
         }));
         RedisClient_1.default.set(`user:${player1Id}:game`, gameId);
         RedisClient_1.default.set(`user:${player2Id}:game`, gameId);
@@ -86,19 +85,21 @@ class Game {
                     moves: this.board.pgn(),
                     player1Id: this.player1Id,
                     player2Id: this.player2Id,
-                    turn: this.board.turn() === "w" ? "black" : "white"
                 })); // Update game state in Redis
             }
+            const email = socket._userEmail.replace(/^"|"$/g, '');
+            console.log(`User email ${email} inside makeMove method`);
             //validate type of move using zod
-            if (this.moveCount % 2 === 0 && socket != this.player1) {
+            if (this.moveCount % 2 === 0 && email != this.player1._userEmail.replace(/^"|"$/g, '')) {
                 console.log("early return");
                 return;
             }
-            if (this.moveCount % 2 === 1 && socket != this.player2) {
+            if (this.moveCount % 2 === 1 && email != this.player2._userEmail.replace(/^"|"$/g, '')) {
                 console.log("early return");
                 return;
             }
             try {
+                console.log(`making move ${move} for player ${this.board.turn()}`);
                 this.board.move(move);
                 this.broadcastMove(move);
                 const winner = this.board.turn() === "w" ? this.player1Id : this.player2Id;
@@ -131,27 +132,38 @@ class Game {
         });
     }
     handleGameOver() {
-        // need to save the winner in the database of the game 
-        if (this.gameId) {
-            const winner = this.board.turn() === "w" ? "black" : "white";
-            RedisClient_1.default.set(`game:${this.gameId}:winner`, winner);
-        }
-        this.player1.send(JSON.stringify({
-            type: Message_1.GAME_OVER,
-            payload: {
-                winner: this.board.turn() === "w" ? "black" : "white",
-            },
-        }));
-        console.log("message sent to player1");
-        this.player2.send(JSON.stringify({
-            type: Message_1.GAME_OVER,
-            payload: {
-                winner: this.board.turn() === "w" ? "black" : "white",
-            },
-        }));
-        console.log("message sent to player2");
+        return __awaiter(this, void 0, void 0, function* () {
+            // need to save the winner in the database of the game 
+            if (this.gameId) {
+                const winner = this.board.turn() === "w" ? "black" : "white";
+                yield client.game.update({
+                    where: {
+                        id: this.gameId
+                    },
+                    data: {
+                        status: "finished",
+                    }
+                });
+                RedisClient_1.default.set(`game:${this.gameId}:winner`, winner);
+            }
+            this.player1.send(JSON.stringify({
+                type: Message_1.GAME_OVER,
+                payload: {
+                    winner: this.board.turn() === "w" ? "black" : "white",
+                },
+            }));
+            console.log("message sent to player1");
+            this.player2.send(JSON.stringify({
+                type: Message_1.GAME_OVER,
+                payload: {
+                    winner: this.board.turn() === "w" ? "black" : "white",
+                },
+            }));
+            console.log("message sent to player2");
+        });
     }
     broadcastMove(move) {
+        console.log("broadcasting move", move);
         if (this.moveCount % 2 === 0) {
             this.player2.send(JSON.stringify({
                 type: Message_1.MOVE,

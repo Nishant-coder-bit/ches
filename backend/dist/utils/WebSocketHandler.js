@@ -48,6 +48,7 @@ const client_1 = require("@prisma/client");
 const prisma = new client_1.PrismaClient();
 class WebSocketHandler {
     constructor() {
+        this.countAddParticipantsCall = 0;
         this.gameParticipants = new Map();
         this.spectators = new Map();
     }
@@ -55,14 +56,11 @@ class WebSocketHandler {
         return __awaiter(this, void 0, void 0, function* () {
             var _a;
             console.log(`inside add participant and gameId is ${gameId} and socket is ${socket}`);
-            let count = 0;
             if (!this.gameParticipants.has(gameId)) {
                 this.gameParticipants.set(gameId, new Set());
             }
             (_a = this.gameParticipants.get(gameId)) === null || _a === void 0 ? void 0 : _a.add(socket);
             const email = socket._userEmail.replace(/^"|"$/g, '');
-            // const email = "abc@gmail.com";
-            console.log("email", email);
             // TODO: why are we rpushing the email to the list of participants in redis? is it correct
             yield RedisClient_1.default.rpush(`game:${gameId}:participants`, email);
             yield prisma.participant.upsert({
@@ -70,8 +68,8 @@ class WebSocketHandler {
                 create: { gameId: gameId, userEmail: email, createdAt: new Date() },
                 update: { gameId: gameId, userEmail: email }
             });
-            count++;
-            console.log(`added participant ${email} to game ${gameId} and count is ${count}`);
+            this.countAddParticipantsCall++;
+            console.log(`added participant ${email} to game ${gameId} and count is ${this.countAddParticipantsCall}`);
         });
     }
     addSpectator(gameId, ws) {
