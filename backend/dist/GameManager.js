@@ -95,7 +95,8 @@ class GameManager {
                         },
                     });
                     // Determine player color
-                    const playerColor = parsedGameState.player1Id === id ? "black" : "white";
+                    const playerColor = parsedGameState.player1Id === id ? "white" : "black";
+                    const turnFromFe = (pgnOfGame === null || pgnOfGame === void 0 ? void 0 : pgnOfGame.fen.split(" ")[1]) === "w" ? "white" : "black";
                     // Send restored state ONLY to the correct user
                     socket.send(JSON.stringify({
                         type: Message_1.INIT_GAME,
@@ -104,7 +105,7 @@ class GameManager {
                             gameId: gameId,
                             fen: pgnOfGame === null || pgnOfGame === void 0 ? void 0 : pgnOfGame.fen
                         },
-                        color: playerColor
+                        color: turnFromFe
                     }));
                     // Remove disconnection marker
                     yield RedisClient_1.default.del(`game:${gameId}:player:${id}:disconnected`);
@@ -257,13 +258,14 @@ class GameManager {
                                 fen: true
                             },
                         });
-                        const playerColor = parsedState.player1Id === id ? "black" : "white";
+                        const playerColor = parsedState.player1Id === id ? "white" : "black";
+                        const turnFromFe = (pgnOfGame === null || pgnOfGame === void 0 ? void 0 : pgnOfGame.fen.split(" ")[1]) === "w" ? "white" : "black";
                         // Send restored game state
                         socket.send(JSON.stringify({
                             type: Message_1.INIT_GAME,
                             payload: { moves: pgnOfGame === null || pgnOfGame === void 0 ? void 0 : pgnOfGame.moves, fen: pgnOfGame === null || pgnOfGame === void 0 ? void 0 : pgnOfGame.fen, gameId: gameId },
                             gameId: gameId,
-                            color: playerColor,
+                            color: turnFromFe,
                         }));
                         // Remove the disconnection marker
                         yield RedisClient_1.default.del(`game:${gameId}:player:${id}:disconnected`);

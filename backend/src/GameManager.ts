@@ -61,8 +61,8 @@ export class GameManager {
               },
            })
             // Determine player color
-            const playerColor = parsedGameState.player1Id === id ? "black" : "white";
-
+            const playerColor = parsedGameState.player1Id === id ? "white" : "black";
+            const turnFromFe = pgnOfGame?.fen.split(" ")[1] === "w" ? "white" : "black";
             // Send restored state ONLY to the correct user
             socket.send(JSON.stringify({ 
                 type: INIT_GAME,
@@ -72,7 +72,7 @@ export class GameManager {
                      fen: pgnOfGame?.fen
                 },
                
-                color: playerColor
+                color: turnFromFe
             }));
 
             // Remove disconnection marker
@@ -250,8 +250,8 @@ export class GameManager {
                 fen:true
               },
            })
-            const playerColor = parsedState.player1Id === id ? "black" : "white";
-    
+            const playerColor = parsedState.player1Id === id ? "white" : "black";
+            const turnFromFe = pgnOfGame?.fen.split(" ")[1] === "w" ? "white" : "black"; 
             // Send restored game state
             socket.send(
               JSON.stringify({
@@ -259,7 +259,7 @@ export class GameManager {
                 payload: { moves: pgnOfGame?.moves , fen: pgnOfGame?.fen ,gameId:gameId},
                
                 gameId:gameId,
-                color: playerColor,
+                color: turnFromFe,
               })
             );
     
