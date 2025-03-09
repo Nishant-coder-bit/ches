@@ -10,6 +10,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@fortawesome/free-solid-svg-icons": "^6.7.2",
+    "@fortawesome/react-fontawesome": "^0.2.2",
     "@types/ws": "^8.5.13",
     "aws-sdk": "^2.1692.0",
     "axios": "^1.7.9",
@@ -29,6 +31,7 @@
     "@types/bcryptjs": "^2.4.6",
     "@types/react": "^18.3.17",
     "@types/react-dom": "^18.3.5",
+    "@types/react-fontawesome": "^1.6.8",
     "@types/react-toastify": "^4.0.2",
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.20",

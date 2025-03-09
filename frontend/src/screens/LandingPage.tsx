@@ -1,7 +1,9 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Login from "../components/Login";
 import Signup from "../components/Signup";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faChessBoard } from "@fortawesome/free-solid-svg-icons";
 
 export const LandingPage = () => {
   const navigate = useNavigate();
@@ -18,7 +20,7 @@ export const LandingPage = () => {
 
   const joinSpectator = async (gameId: string) => {
     try {
-  
+
       const res = await fetch(`http://localhost:8080/game/${gameId}/spectate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -35,87 +37,109 @@ export const LandingPage = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row items-center justify-center bg-gray-100 p-6 relative">
-      {/* Left Section */}
-      <div className="text-center md:text-left md:w-1/2 p-6">
-        <h1 className="text-4xl md:text-5xl font-bold text-gray-800 mb-4">
-          Play Chess Online
-        </h1>
-        <p className="text-gray-600 text-lg mb-6">
-          Join millions of players worldwide. Play chess for free, improve your
-          skills, and have fun!
-        </p>
-      </div>
+    <div className="min-h-screen bg-gray-50">
+      {/* Top Bar */}
+      <header className="bg-gray-900 text-white p-6">
+        <div className="container mx-auto flex justify-between items-center">
+          <div className="flex items-center">
+            <FontAwesomeIcon icon={faChessBoard} className="mr-2 text-blue-500 text-2xl" />
+            <h1 className="text-xl font-bold">Modern Chess Online</h1>
+          </div>
+          <nav>
+            <button onClick={() => setShowLogin(true)} className="px-4 py-2 text-gray-200 hover:text-white focus:outline-none">
+              Login
+            </button>
+            <button onClick={() => setShowSignup(true)} className="px-4 py-2 bg-yellow-500 text-gray-900 rounded-md hover:bg-yellow-600 focus:outline-none">
+              Sign Up
+            </button>
+          </nav>
+        </div>
+      </header>
 
-      {/* Right Section */}
-      <div className="md:w-1/2 flex flex-col items-center p-6 bg-white shadow-lg rounded-lg">
-        <img
-          src={"/chessBoard.png.webp"}
-          alt="Chess Board"
-          className="w-full max-w-md rounded-lg shadow-lg mb-6"
-        />
-
-        {/* Login and Signup Buttons */}
-        <div className="flex flex-col space-y-4">
-          <button
-            onClick={() => setShowLogin(true)}
-            className="px-6 py-3 bg-green-600 text-white rounded-md text-lg font-medium hover:bg-green-700 transition duration-300"
-          >
-            Login
-          </button>
-          <button
-            onClick={() => setShowSignup(true)}
-            className="px-6 py-3 bg-yellow-600 text-white rounded-md text-lg font-medium hover:bg-yellow-700 transition duration-300"
-          >
-            Sign Up
-          </button>
+      <div className="container mx-auto px-4 py-12 flex flex-col md:flex-row items-center justify-center">
+        {/* Left Section */}
+        <div className="text-center md:text-left md:w-1/2 p-6">
+          <h1 className="text-4xl md:text-5xl font-bold text-gray-800 mb-6">
+            Experience Chess Like Never Before
+          </h1>
+          <p className="text-gray-600 text-lg mb-8">
+            Join our vibrant community and dive into the world of online chess. Whether you're looking for a casual game or a serious challenge, you'll find your perfect match here.
+          </p>
+          <div className="flex justify-center md:justify-start">
+            <button
+              onClick={() => setShowSignup(true)}
+              className="px-8 py-3 bg-blue-600 text-white rounded-lg text-lg font-semibold hover:bg-blue-700 transition duration-300"
+            >
+              Get Started Now
+            </button>
+          </div>
         </div>
 
-        {/* List of Ongoing Games */}
-        <div className="mt-6 w-full">
-          <h2 className="text-xl font-semibold text-gray-700 mb-3">Ongoing Games</h2>
-          {ongoingGames.length > 0 ? (
-            <ul className="space-y-2">
-              {ongoingGames.map((game) => (
-                <li
-                  key={game.id}
-                  className="cursor-pointer p-2 bg-blue-100 hover:bg-blue-200 rounded-md transition"
-                  onClick={() => joinSpectator(game.id)}
-                >
-                  Game {game.id}
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-gray-600">No ongoing games available.</p>
-          )}
+        {/* Right Section */}
+        <div className="md:w-1/2 flex flex-col items-center p-6">
+          <img
+            src={"/chessBoard.png.webp"}
+            alt="Chess Board"
+            className="w-full max-w-md rounded-xl shadow-lg mb-8"
+          />
+
+          {/* Ongoing Games Section */}
+          <div className="w-full">
+            <h2 className="text-2xl font-semibold text-gray-700 mb-4 text-center">Spectate Ongoing Games</h2>
+            {ongoingGames.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {ongoingGames.map((game) => (
+                  <div
+                    key={game.id}
+                    className="bg-white border border-gray-200 rounded-md p-4 shadow-sm hover:shadow-md transition-shadow duration-300 cursor-pointer"
+                    onClick={() => joinSpectator(game.id)}
+                  >
+                    <h3 className="font-semibold text-gray-800">Game {game.id}</h3>
+                    <p className="text-sm text-gray-500">Click to spectate</p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-600 text-center">No ongoing games to spectate at the moment.</p>
+            )}
+          </div>
         </div>
       </div>
+
+      {/* Footer */}
+      <footer className="bg-gray-900 text-gray-300 py-6">
+        <div className="container mx-auto text-center">
+          <p>&copy; 2025 Modern Chess Online. All rights reserved.</p>
+          <p className="mt-2 text-sm">
+            <a href="/terms" className="hover:text-white">Terms of Service</a> | <a href="/privacy" className="hover:text-white">Privacy Policy</a>
+          </p>
+        </div>
+      </footer>
 
       {/* Login Modal */}
       {showLogin && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+          <div className="bg-white p-8 rounded-lg shadow-xl max-w-md w-full">
             <div className="flex justify-end">
-              <button className="text-red-500" onClick={() => setShowLogin(false)}>
-                &times;
+              <button className="text-red-500 hover:text-red-700 focus:outline-none" onClick={() => setShowLogin(false)}>
+                <FontAwesomeIcon icon="times" /> &times;
               </button>
             </div>
-            <Login />
+            <Login onClose={() => setShowLogin(false)} />
           </div>
         </div>
       )}
 
       {/* Signup Modal */}
       {showSignup && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+          <div className="bg-white p-8 rounded-lg shadow-xl max-w-md w-full">
             <div className="flex justify-end">
-              <button className="text-red-500" onClick={() => setShowSignup(false)}>
+              <button className="text-red-500 hover:text-red-700 focus:outline-none" onClick={() => setShowSignup(false)}>
                 &times;
               </button>
             </div>
-            <Signup />
+            <Signup onClose={() => setShowSignup(false)}/>
           </div>
         </div>
       )}
