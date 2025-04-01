@@ -47,7 +47,6 @@ exports.gameController = {
             try {
                 console.log("inside get ongoing games");
                 const status = req.query.status;
-                console.log("status", req.query);
                 const games = yield gameService_1.gameService.getGamesByStatus(status);
                 res.status(200).send(games);
             }

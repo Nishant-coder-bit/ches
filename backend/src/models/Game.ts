@@ -1,193 +1,195 @@
 import { Chess } from "chess.js";
 import { WebSocket } from "ws";
-import { PrismaClient, User } from "@prisma/client";
+import { PrismaClient } from "@prisma/client";
 import RedisClient from "../utils/RedisClient";
-import { GAME_OVER, GAME_STATUS_ONGOING, INIT_GAME, INVALID_MOVE, MOVE } from "../utils/Message";
-const client = new PrismaClient();
+
+const prisma = new PrismaClient();
+
 export class Game {
-  public player1: WebSocket;
-  public player2: WebSocket;
+  public gameId: string;
   private board: Chess;
-  private startTime: Date;
-  private moveCount: number;
-  public gameId: string | undefined;
-  public player1Id:any;
-  public player2Id: any;
-  constructor(player1: WebSocket, player2: WebSocket) {
-    this.player1 = player1;
-    this.player2 = player2;
+  private player1Socket: WebSocket;
+  private player2Socket: WebSocket;
+  private player1Id: string;
+  private player2Id: string;
+  private moveCount: number = 0;
+
+  private constructor(
+    gameId: string,
+    player1Socket: WebSocket,
+    player2Socket: WebSocket,
+    player1Id: string,
+    player2Id: string
+  ) {
+    this.gameId = gameId;
+    this.player1Socket = player1Socket;
+    this.player2Socket = player2Socket;
+    this.player1Id = player1Id;
+    this.player2Id = player2Id;
     this.board = new Chess();
-    this.startTime = new Date();
-    this.moveCount = 0;
   }
-  public static async create(
-    player1: WebSocket,
-    player2: WebSocket,
-    player1Id: any,
-    player2Id: any
+
+  static async create(
+    player1Socket: WebSocket,
+    player2Socket: WebSocket,
+    player1Id: string,
+    player2Id: string
   ): Promise<Game> {
-   
-    const game = new Game(player1, player2);
-    await game.initializeGameData(player1Id, player2Id);
-    // game.initializeGame();
+    // Create game record in database
+    const gameRecord = await prisma.game.create({
+      data: {
+        player1Id,
+        player2Id,
+        status: 'ongoing',
+        moves: '',
+        fen: new Chess().fen()
+      }
+    });
+
+    const game = new Game(
+      gameRecord.id,
+      player1Socket,
+      player2Socket,
+      player1Id,
+      player2Id
+    );
+
+    // Initialize game state in Redis
+    await game.saveState();
+
+    // Send initial game state to both players
+    game.sendToPlayer(player1Socket, {
+      type: 'GAME_START',
+      color: 'white',
+      gameId: game.gameId,
+      fen: game.board.fen()
+    });
+
+    game.sendToPlayer(player2Socket, {
+      type: 'GAME_START',
+      color: 'black',
+      gameId: game.gameId,
+      fen: game.board.fen()
+    });
+
     return game;
   }
-  private async initializeGameData(player1Id: any, player2Id: any) {
-    try {
-      this.player1Id = player1Id;
-      this.player2Id = player2Id;
-     
-      const game = await client.game.create({
-        data: {
 
-          player1Id: player1Id,
-          player2Id: player2Id,
-          moves: this.board.pgn(), // `this.board` is now initialized.
-          fen: this.board.fen(),
-          status:GAME_STATUS_ONGOING
-        },
-      });
-      console.log(`Game is created between ${player1Id}  and ${player2Id}`, game);
-      this.gameId = game.id;
-      this.initializeGame(player1Id, player2Id,game.id);
+  static async restore(gameId: string, savedState: any): Promise<Game> {
+    const { player1Id, player2Id, fen } = savedState;
+    
+    // Create game instance without sockets
+    const game = new Game(
+      gameId,
+      null as unknown as WebSocket,
+      null as unknown as WebSocket,
+      player1Id,
+      player2Id
+    );
+    
+    game.board.load(fen);
+    return game;
+  }
+
+  async reconnectPlayer(ws: WebSocket, userId: string) {
+    if (userId === this.player1Id) {
+      this.player1Socket = ws;
+    } else if (userId === this.player2Id) {
+      this.player2Socket = ws;
+    }
+
+    // Send current game state to reconnected player
+    this.sendToPlayer(ws, {
+      type: 'GAME_RESTORED',
+      color: userId === this.player1Id ? 'white' : 'black',
+      gameId: this.gameId,
+      fen: this.board.fen(),
+      moves: this.board.pgn()
+    });
+  }
+
+  async makeMove(userId: string, move: { from: string; to: string }) {
+    // Verify it's the player's turn
+    const isWhiteTurn = this.moveCount % 2 === 0;
+    if ((isWhiteTurn && userId !== this.player1Id) || 
+        (!isWhiteTurn && userId !== this.player2Id)) {
+      throw new Error('Not your turn');
+    }
+
+    try {
+      this.board.move(move);
+      this.moveCount++;
+      
+      // Save game state
+      await this.saveState();
+      
+      // Broadcast move to both players
+      this.broadcastGameState(move);
+      
+      // Check for game over
+      if (this.board.isGameOver()) {
+        await this.handleGameOver();
+      }
     } catch (error) {
-      console.error("Error initializing game data:", error);
+      throw new Error('Invalid move');
     }
   }
-  private initializeGame(player1Id: number, player2Id: number,gameId:string) {
-    this.player1.send(JSON.stringify({ type: INIT_GAME, color: "white" ,gameId:gameId,playerId:player1Id}));
-    this.player2.send(JSON.stringify({ type: INIT_GAME, color: "black",gameId:gameId,playerId:player2Id}));
-     console.log(`inside initialize game and gameId is ${gameId} and player1Id is ${player1Id} and player2Id is ${player2Id}`);
-     RedisClient.set(`game:${this.gameId}`, JSON.stringify({
+
+  private async saveState() {
+    const gameState = {
       fen: this.board.fen(),
+      pgn: this.board.pgn(),
       player1Id: this.player1Id,
       player2Id: this.player2Id,
-      
-    }));
-    RedisClient.set(`user:${player1Id}:game`, gameId);
-    RedisClient.set(`user:${player2Id}:game`, gameId);
-  }
-  public async makeMove(
-    socket: WebSocket,
-    move: {
-      from: string;
-      to: string;
-    }
-  ) {
-    if (this.gameId) {
-      await client.game.update({
-        where:{
-          id:this.gameId
-        },
-        data:{
-          status:"ongoing"
+      moveCount: this.moveCount
+    };
+
+    await Promise.all([
+      RedisClient.set(`game:${this.gameId}`, JSON.stringify(gameState)),
+      RedisClient.set( `user:${this.player1Id}:game`, this.gameId),
+      prisma.game.update({
+        where: { id: this.gameId },
+        data: {
+          moves: this.board.pgn(),
+          fen: this.board.fen()
         }
       })
-      await RedisClient.set(`game:${this.gameId}`, JSON.stringify({
-        fen: this.board.fen(),
-        moves: this.board.pgn(),
-        player1Id: this.player1Id,
-        player2Id: this.player2Id,
-      
-      })); // Update game state in Redis
-    }
-    const email = (socket as any)._userEmail.replace(/^"|"$/g, '');
-    console.log(`User email ${email} inside makeMove method`);
-    //validate type of move using zod
-    if (this.moveCount % 2 === 0 && email !=(this.player1 as any)._userEmail.replace(/^"|"$/g, '')) {
-      console.log("early return");
-      return;
-    }
-    if (this.moveCount % 2 === 1 && email !=(this.player2 as any)._userEmail.replace(/^"|"$/g, '')) {
-      console.log("early return");
-      return;
-    }
-    try {
-      console.log(`making move ${move} for player ${this.board.turn()}`); 
-      this.board.move(move); 
-      this.broadcastMove(move);
-      const winner = this.board.turn() === "w" ? this.player1Id :this.player2Id;
-      //push move to redis queue
-      const moveData = JSON.stringify({
-        move: move, 
-        fen: this.board.fen(), 
-        pgn: this.board.pgn(), 
-        isGameOver: this.board.isGameOver(),
-        winner: winner
-      });
-      console.log("Pushing to Redis:", moveData);
-      await RedisClient.rpush( `game:${this.gameId}:queue`,moveData);
-      await new Promise(resolve => setTimeout(resolve, 100)); 
-    } catch (e) {
-      console.log("Invalid Move", e);
-      socket.send(JSON.stringify({
-        type:'invalid_move',
-        payload:{
-            move:move
-        }
-      }))
-      return;
-    }
-    if (this.board.isGameOver()) {
-      this.handleGameOver();
-    }
-
-    this.moveCount++;
+    ]);
   }
 
-  private async handleGameOver() { 
-     // need to save the winner in the database of the game 
+  private broadcastGameState(lastMove?: { from: string; to: string }) {
+    const gameState = {
+      type: 'GAME_UPDATE',
+      fen: this.board.fen(),
+      lastMove,
+      moveCount: this.moveCount
+    };
+
+    this.sendToPlayer(this.player1Socket, gameState);
+    this.sendToPlayer(this.player2Socket, gameState);
+  }
+
+  private async handleGameOver() {
+    const winner = this.board.turn() === 'w' ? 'black' : 'white';
     
-     if(this.gameId){
-        const winner = this.board.turn() === "w" ? "black" : "white";
-        await client.game.update({
-          where:{
-            id:this.gameId
-          },
-          data:{
-            status:"finished",
-  
-          }
-        })
-        RedisClient.set(`game:${this.gameId}:winner`, winner);
-     }
-    this.player1.send(
-      JSON.stringify({
-        type: GAME_OVER,
-        payload: {
-          winner: this.board.turn() === "w" ? "black" : "white",
-        },
-      })
-    );
-    console.log("message sent to player1");
-    this.player2.send(
-      JSON.stringify({
-        type: GAME_OVER,
-        payload: {
-          winner: this.board.turn() === "w" ? "black" : "white",
-        },
-      })
-    );
-    console.log("message sent to player2");
+    const gameOverState = {
+      type: 'GAME_OVER',
+      winner,
+      fen: this.board.fen()
+    };
+
+    this.sendToPlayer(this.player1Socket, gameOverState);
+    this.sendToPlayer(this.player2Socket, gameOverState);
+
+    await prisma.game.update({
+      where: { id: this.gameId },
+      data: { status: 'finished' }
+    });
   }
-  private broadcastMove(move: { from: string; to: string }) {
-    console.log("broadcasting move", move);
-    if (this.moveCount % 2 === 0) {
-      this.player2.send(
-        JSON.stringify({
-          type: MOVE,
-          payload: move,
-        })
-      );
-      console.log("message sent to player2");
-    } else {
-      this.player1.send(
-        JSON.stringify({
-          type: MOVE,
-          payload: move,
-        })
-      );
-      console.log("message sent to player1");
+
+  private sendToPlayer(ws: WebSocket, data: any) {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify(data));
     }
   }
 }

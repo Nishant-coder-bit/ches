@@ -70,6 +70,8 @@ export const userController = {
 
   async loginUser(req: Request, res: Response) {
     try{
+      console.log("request reaching inside login page");
+      console.log("req.body", req.body);
       const email = req.body.email;
       const password = req.body.password;
       console.log("email and password", email, password);

@@ -1,7 +1,7 @@
 import Redis from 'ioredis';
 
 class RedisClient {
-  private client: Redis;
+  public client: Redis;
 
   constructor() {
     this.client = new Redis(); 
