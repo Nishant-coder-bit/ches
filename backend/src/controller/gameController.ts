@@ -28,10 +28,12 @@ export const gameController = {
       res.status(500).send('Internal Server Error');
     }
   },
-   async getOngoingGames(req: Request, res: Response) {
+
+   async getGamesByStatus(req: Request, res: Response) {
     try {
       console.log("inside get ongoing games");
-     const games =  await gameService.getOngoingGames();
+      const status = req.query.status;
+     const games =  await gameService.getGamesByStatus(status);
     
       res.status(200).send(games);
     } catch (error) {

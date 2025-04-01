@@ -76,11 +76,13 @@ export const Game = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 font-sans">
-     <header className="bg-gray-900 text-white p-4 flex justify-between items-center">
+    <>
+    <header className="bg-gray-900 text-white p-4 flex justify-between items-center">
      
-      <TopBarComponent />
-      </header>
+    <TopBarComponent />
+    </header>
+    <div className="min-h-screen bg-gray-50 font-sans">
+   
       <div className="container mx-auto px-4 py-8 flex gap-6">
         <SidebarComponent moves={moves} playerColor={playerColor} />
 
@@ -133,5 +135,6 @@ export const Game = () => {
         {isChatOpen && <ChatComponent />}
       </div>
     </div>
+    </>
   );
 };

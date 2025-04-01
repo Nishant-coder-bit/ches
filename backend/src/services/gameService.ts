@@ -31,10 +31,10 @@ export const gameService = {
      
   },
 
-  async getOngoingGames() {
+  async getGamesByStatus(status:any) {
     try {
       const games = await prisma.game.findMany({
-        where: { status: "ongoing" },
+        where: { status: status },
         select: { id: true, player1Id: true, player2Id: true }, 
       });
       console.log(`games are  ${games}`);

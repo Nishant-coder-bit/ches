@@ -39,11 +39,11 @@ exports.gameService = {
             }
         });
     },
-    getOngoingGames() {
+    getGamesByStatus(status) {
         return __awaiter(this, void 0, void 0, function* () {
             try {
                 const games = yield prisma.game.findMany({
-                    where: { status: "ongoing" },
+                    where: { status: status },
                     select: { id: true, player1Id: true, player2Id: true },
                 });
                 console.log(`games are  ${games}`);

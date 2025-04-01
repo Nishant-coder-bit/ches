@@ -42,11 +42,13 @@ exports.gameController = {
             }
         });
     },
-    getOngoingGames(req, res) {
+    getGamesByStatus(req, res) {
         return __awaiter(this, void 0, void 0, function* () {
             try {
                 console.log("inside get ongoing games");
-                const games = yield gameService_1.gameService.getOngoingGames();
+                const status = req.query.status;
+                console.log("status", req.query);
+                const games = yield gameService_1.gameService.getGamesByStatus(status);
                 res.status(200).send(games);
             }
             catch (error) {

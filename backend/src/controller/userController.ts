@@ -6,6 +6,7 @@ import jwt from "jsonwebtoken";
 const client = new PrismaClient();
 
 export const userController = {
+
   async getUser(req: Request, res: Response) {
     try {
       //@ts-ignore
@@ -25,8 +26,6 @@ export const userController = {
     try {
       //@ts-ignore
       const email = req.userEmail;
-
-      console.log("inside getUserGame emai request reaching here", email);
       const games = await userService.getUserGames(email);
       res.json(games);
     } catch (error) {
@@ -38,9 +37,6 @@ export const userController = {
     //add zod validation here
 
     try {
-      // const validatedData = signupSchema.safeParse(req.body);
-      // console.log("Signup Validated Data using zod", validatedData);
-      console.log("request reached to signup endpoint");
       await client.user.create({
         data: {
           name: req.body.name,
@@ -77,7 +73,7 @@ export const userController = {
       const email = req.body.email;
       const password = req.body.password;
       console.log("email and password", email, password);
-      const existingUser = await client.user.findFirst({
+      const existingUser = await client.user.findUnique({
         where: {
           email
         },
@@ -108,7 +104,7 @@ export const userController = {
     }catch(e){
 
       console.log("error while login", e);
-      res.status(500).send("Internal Server Error");  
+      res.status(500).send("Internal Server Error!!!. Please Check your email and password");  
     }
    
   },

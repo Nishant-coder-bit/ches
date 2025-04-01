@@ -4,6 +4,8 @@ import jwt from "jsonwebtoken"
 export const UserMiddleware = (req:Request,res:Response,next:NextFunction)=>{
     const header = req.headers["authorization"];
     const token = header?.split(" ")[1]; 
+    console.log("token",token);
+    console.log("header",header);
     const decoded = jwt.verify(token as string,"12345");
 
  

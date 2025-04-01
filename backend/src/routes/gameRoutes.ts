@@ -47,7 +47,7 @@ router.post("/:gameId/spectate", gameController.addSpectator);
  *       500:
  *         description: Internal Server Error.
  */
-router.get("/ongoing", gameController.getOngoingGames);
+router.get("/getGamesByStatus", gameController.getGamesByStatus);
 
 
 // router.get("/game/:id", gameController.getGame);

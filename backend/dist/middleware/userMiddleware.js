@@ -8,6 +8,8 @@ const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const UserMiddleware = (req, res, next) => {
     const header = req.headers["authorization"];
     const token = header === null || header === void 0 ? void 0 : header.split(" ")[1];
+    console.log("token", token);
+    console.log("header", header);
     const decoded = jsonwebtoken_1.default.verify(token, "12345");
     if (decoded) {
         //@ts-ignore

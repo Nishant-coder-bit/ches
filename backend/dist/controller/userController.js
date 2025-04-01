@@ -38,7 +38,6 @@ exports.userController = {
             try {
                 //@ts-ignore
                 const email = req.userEmail;
-                console.log("inside getUserGame emai request reaching here", email);
                 const games = yield userService_1.userService.getUserGames(email);
                 res.json(games);
             }
@@ -51,9 +50,6 @@ exports.userController = {
         return __awaiter(this, void 0, void 0, function* () {
             //add zod validation here
             try {
-                // const validatedData = signupSchema.safeParse(req.body);
-                // console.log("Signup Validated Data using zod", validatedData);
-                console.log("request reached to signup endpoint");
                 yield client.user.create({
                     data: {
                         name: req.body.name,
@@ -89,7 +85,7 @@ exports.userController = {
                 const email = req.body.email;
                 const password = req.body.password;
                 console.log("email and password", email, password);
-                const existingUser = yield client.user.findFirst({
+                const existingUser = yield client.user.findUnique({
                     where: {
                         email
                     },
@@ -115,7 +111,7 @@ exports.userController = {
             }
             catch (e) {
                 console.log("error while login", e);
-                res.status(500).send("Internal Server Error");
+                res.status(500).send("Internal Server Error!!!. Please Check your email and password");
             }
         });
     },
