@@ -88,7 +88,8 @@ wss.on('connection', (ws, req) => __awaiter(void 0, void 0, void 0, function* ()
                         console.log("gameContext after create game is called", gameContext);
                         if (gameContext) {
                             console.log("gameContext.gameId", gameContext.gameId);
-                            ws.send(JSON.stringify({ type: 'GAME_CREATED', gameId: gameContext.gameId, status: gameContext.status }));
+                            const data = JSON.stringify({ type: 'GAME_CREATED', gameId: gameContext.gameId, status: gameContext.status });
+                            broadcastToAllConnectedClients(data);
                         }
                     }
                     catch (error) {
@@ -133,6 +134,14 @@ wss.on('connection', (ws, req) => __awaiter(void 0, void 0, void 0, function* ()
 const server = app.listen(process.env.PORT || 8080, () => {
     console.log(`Server is running on port ${process.env.PORT || 8080}`);
 });
+function broadcastToAllConnectedClients(data) {
+    // Broadcast to all connected clients
+    wss.clients.forEach((client) => __awaiter(this, void 0, void 0, function* () {
+        if (client.readyState === WebSocket.OPEN) {
+            yield client.send(data);
+        }
+    }));
+}
 server.on('upgrade', (request, socket, head) => {
     wss.handleUpgrade(request, socket, head, (ws) => {
         wss.emit('connection', ws, request);

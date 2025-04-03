@@ -84,7 +84,9 @@ wss.on('connection', async (ws, req: any) => {
             console.log("gameContext after create game is called",gameContext);
             if (gameContext) {
               console.log("gameContext.gameId",gameContext.gameId);
-              ws.send(JSON.stringify({ type: 'GAME_CREATED', gameId: gameContext.gameId , status:gameContext.status }));
+              const data = JSON.stringify({ type: 'GAME_CREATED', gameId: gameContext.gameId , status:gameContext.status });
+              broadcastToAllConnectedClients(data);
+            
             }
           } catch (error) {
             ws.send(JSON.stringify({ type: 'ERROR', message: 'Failed to create game' }));
@@ -96,6 +98,7 @@ wss.on('connection', async (ws, req: any) => {
             // const gameContext = await SessionService.validateGameToken(data.token);
             // if (gameContext) {
              const response =  await gameManager.joinGame(ws,data.userId);
+
               ws.send(JSON.stringify({ type: 'GAME_JOINED', gameId: response.gameId , status:response.status, color:response.color }));
             // }
           } catch (error) {
@@ -129,6 +132,15 @@ wss.on('connection', async (ws, req: any) => {
 const server = app.listen(process.env.PORT || 8080,()=>{
   console.log(`Server is running on port ${process.env.PORT || 8080}`);
 });
+ function broadcastToAllConnectedClients(data:any){
+  // Broadcast to all connected clients
+wss.clients.forEach(async client => {
+  if (client.readyState === WebSocket.OPEN ) {
+   await client.send(data);
+  }
+});
+
+}
 server.on('upgrade', (request, socket, head) => {
   wss.handleUpgrade(request, socket, head, (ws) => {
     wss.emit('connection', ws, request);

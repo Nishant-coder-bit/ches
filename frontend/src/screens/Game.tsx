@@ -27,6 +27,7 @@ export const Game = () => {
   const [turn, setTurn] = useState<"white" | "black">("white");
   const { socket } = useSocket();
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [isWaiting, setIsWaiting] = useState(false);
 
   useEffect(() => {
     if (!socket) return;
@@ -52,6 +53,9 @@ export const Game = () => {
         case INVALID_MOVE:
           setGame(new Chess(fen));
           break;
+        case 'GAME_CREATED':
+           setIsWaiting(true);
+            break;
 
         case GAME_OVER:
           setStarted(false);
@@ -115,10 +119,10 @@ export const Game = () => {
 
               {!started && (
                 <button
-                  onClick={() => socket?.send(JSON.stringify({ type: INIT_GAME }))}
+                  onClick={() => socket?.send(JSON.stringify({ type:  'CREATE_GAME'}))}
                   className="w-full mt-6 bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700"
                 >
-                  Start Game
+                  Create Game
                 </button>
               )}
             </div>

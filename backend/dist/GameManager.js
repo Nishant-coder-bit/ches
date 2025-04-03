@@ -122,6 +122,7 @@ class GameManager {
             for (const key of waitingPlayers) {
                 const waitingPlayerId = key.split(':')[1];
                 if (waitingPlayerId !== excludeUserId) {
+                    //matching should be done here using matching engine service
                     return waitingPlayerId;
                 }
             }
