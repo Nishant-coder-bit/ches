@@ -12,7 +12,7 @@ export class Game {
   private player2Socket: WebSocket;
   private player1Id: string;
   private player2Id: string;
-  private moveCount: number = 0;
+  public moveCount: number = 0;
 
   private constructor(
     gameId: string,
@@ -76,17 +76,17 @@ export class Game {
   }
 
   static async restore(gameId: string, savedState: any): Promise<Game> {
-    const { player1Id, player2Id, fen } = savedState;
-    
+    const { player1Id, player2Id, fen,moveCount } = savedState;
+  
     // Create game instance without sockets
     const game = new Game(
       gameId,
       null as unknown as WebSocket,
       null as unknown as WebSocket,
       player1Id,
-      player2Id
+      player2Id,
     );
-    
+    // this.moveCount = moveCount;
     game.board.load(fen);
     return game;
   }
@@ -143,7 +143,7 @@ export class Game {
       player2Id: this.player2Id,
       moveCount: this.moveCount
     };
-
+    // Save game state in Redis and database ( this will take time to reflect move on screen remove it);
     await Promise.all([
       RedisClient.set(`game:${this.gameId}`, JSON.stringify(gameState)),
       RedisClient.set( `user:${this.player1Id}:game`, this.gameId),

@@ -2,7 +2,7 @@ import { WebSocket } from "ws";
 import { Game } from "./models/Game";
 import RedisClient from "./utils/RedisClient";
 import { SessionService } from "./services/SessionService";
-
+const TIMETOLIVE = 60*5; // 5 minutes
 export class GameManager {
   private activeGames: Map<string, Game> = new Map();
   private waitingPlayers: Map<string, WebSocket> = new Map(); // userId -> WebSocket
@@ -11,12 +11,11 @@ export class GameManager {
     // Store the player as waiting
     this.waitingPlayers.set(userId, ws);
     // Store in Redis that this player is waiting
-    await RedisClient.client.set(`waiting_player:${userId}`, 'true'); // 5 minute timeout
+    await RedisClient.client.set(`waiting_player:${userId}`, 'true',"EX",TIMETOLIVE); // 5 minute timeout
     
     return {
       status: 'waiting',
       gameId: undefined,
-
     };
   }
 
@@ -59,7 +58,7 @@ export class GameManager {
     };
   }
 
-  async handleReconnection(ws: WebSocket, userId: string): Promise<void> {
+  async handleReconnection(ws: WebSocket, userId: any): Promise<void> {
     // Check if user was in a game
     const gameId = await RedisClient.get(`user:${userId}:game`);
     if (!gameId) return;
@@ -70,6 +69,7 @@ export class GameManager {
       const gameState = await RedisClient.get(`game:${gameId}`);
       if (gameState) {
         const parsedState = JSON.parse(gameState);
+        console.log("parsedState",parsedState);
         const restoredGame = await Game.restore(gameId, parsedState);
         this.activeGames.set(gameId, restoredGame);
         await restoredGame.reconnectPlayer(ws, userId);
@@ -108,6 +108,7 @@ export class GameManager {
     for (const key of waitingPlayers) {
       const waitingPlayerId = key.split(':')[1];
       if (waitingPlayerId !== excludeUserId) {
+        //matching should be done here using matching engine service
         return waitingPlayerId;
       }
     }

@@ -21,6 +21,7 @@ const RedisClient_1 = __importDefault(require("./utils/RedisClient"));
 const gameRoutes_1 = __importDefault(require("./routes/gameRoutes"));
 const userRoutes_1 = __importDefault(require("./routes/userRoutes"));
 const dotenv_1 = __importDefault(require("dotenv"));
+const client_1 = require("@prisma/client");
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 app.use(express_1.default.json());
@@ -29,6 +30,7 @@ app.use('/game', gameRoutes_1.default);
 app.use('/user', userRoutes_1.default);
 const gameManager = new GameManager_1.GameManager();
 const wss = new ws_1.WebSocketServer({ noServer: true });
+const client = new client_1.PrismaClient();
 // // REST endpoints
 // app.post('/api/games', async (req, res) => {
 //   try {
@@ -50,26 +52,49 @@ wss.on('connection', (ws, req) => __awaiter(void 0, void 0, void 0, function* ()
             ws.close(4403, 'Unauthorized');
             return;
         }
-        ws.userId = decoded.userId;
+        // console.log("ws.userId",decoded.userId);
+        console.log("decoded aftter validation", decoded);
+        const userId = yield client.user.findUnique({
+            where: {
+                email: decoded.id
+            },
+            select: {
+                id: true
+            }
+        });
+        // console.log("userId",userId?.id);
+        ws.userId = userId === null || userId === void 0 ? void 0 : userId.id;
         // Check for existing game
-        const existingGameId = yield RedisClient_1.default.client.get(`user:${decoded.userId}:game`);
+        // console.log(`user:${userId?.id}:game`);
+        const existingGameId = yield RedisClient_1.default.get(`user:${userId === null || userId === void 0 ? void 0 : userId.id}:game`);
+        console.log("existingGameId", existingGameId);
         if (existingGameId) {
-            yield gameManager.handleReconnection(ws, existingGameId);
+            yield gameManager.handleReconnection(ws, userId === null || userId === void 0 ? void 0 : userId.id);
         }
         ws.on('message', (message) => __awaiter(void 0, void 0, void 0, function* () {
-            const data = JSON.parse(message.toString());
-            console.log("data", data);
+            let data;
+            try {
+                data = JSON.parse(message.toString());
+            }
+            catch (e) {
+                ws.send(JSON.stringify({ type: 'ERROR', message: 'Invalid JSON' }));
+                console.log("data", data);
+                return;
+            }
             switch (data.type) {
                 case 'CREATE_GAME':
                     try {
                         const gameContext = yield gameManager.createGame(data.userId, ws);
+                        console.log("gameContext after create game is called", gameContext);
                         if (gameContext) {
+                            console.log("gameContext.gameId", gameContext.gameId);
                             ws.send(JSON.stringify({ type: 'GAME_CREATED', gameId: gameContext.gameId, status: gameContext.status }));
                         }
                     }
                     catch (error) {
                         ws.send(JSON.stringify({ type: 'ERROR', message: 'Failed to create game' }));
                     }
+                    break;
                 case 'JOIN_GAME':
                     try {
                         // const gameContext = await SessionService.validateGameToken(data.token);
@@ -85,6 +110,7 @@ wss.on('connection', (ws, req) => __awaiter(void 0, void 0, void 0, function* ()
                 case 'MOVE':
                     try {
                         const game = yield gameManager.getGame(data.userId);
+                        console.log("game inside move ", game);
                         if (game) {
                             yield game.makeMove(ws.userId, data.move);
                         }
@@ -104,7 +130,9 @@ wss.on('connection', (ws, req) => __awaiter(void 0, void 0, void 0, function* ()
         ws.close();
     }
 }));
-const server = app.listen(process.env.PORT || 8080);
+const server = app.listen(process.env.PORT || 8080, () => {
+    console.log(`Server is running on port ${process.env.PORT || 8080}`);
+});
 server.on('upgrade', (request, socket, head) => {
     wss.handleUpgrade(request, socket, head, (ws) => {
         wss.emit('connection', ws, request);

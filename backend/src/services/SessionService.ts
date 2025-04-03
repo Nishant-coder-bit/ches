@@ -10,7 +10,7 @@ export class SessionService {
   static generateGameToken(userId: string, gameId: string): string {
     return jwt.sign({ userId, gameId }, JWT_SECRET, { expiresIn: '1h' });
   }
-  static async validateAuthToken(token: string): Promise<{ userId: string } | null> {
+  static async validateAuthToken(token: string): Promise<any| null> {
     try {
       return jwt.verify(token, JWT_SECRET) as { userId: string };
     } catch (error) {

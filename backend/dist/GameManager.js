@@ -15,6 +15,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.GameManager = void 0;
 const Game_1 = require("./models/Game");
 const RedisClient_1 = __importDefault(require("./utils/RedisClient"));
+const TIMETOLIVE = 60 * 5; // 5 minutes
 class GameManager {
     constructor() {
         this.activeGames = new Map();
@@ -25,7 +26,7 @@ class GameManager {
             // Store the player as waiting
             this.waitingPlayers.set(userId, ws);
             // Store in Redis that this player is waiting
-            yield RedisClient_1.default.client.set(`waiting_player:${userId}`, 'true'); // 5 minute timeout
+            yield RedisClient_1.default.client.set(`waiting_player:${userId}`, 'true', "EX", TIMETOLIVE); // 5 minute timeout
             return {
                 status: 'waiting',
                 gameId: undefined,
@@ -77,6 +78,7 @@ class GameManager {
                 const gameState = yield RedisClient_1.default.get(`game:${gameId}`);
                 if (gameState) {
                     const parsedState = JSON.parse(gameState);
+                    console.log("parsedState", parsedState);
                     const restoredGame = yield Game_1.Game.restore(gameId, parsedState);
                     this.activeGames.set(gameId, restoredGame);
                     yield restoredGame.reconnectPlayer(ws, userId);

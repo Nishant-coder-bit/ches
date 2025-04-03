@@ -61,9 +61,10 @@ class Game {
     }
     static restore(gameId, savedState) {
         return __awaiter(this, void 0, void 0, function* () {
-            const { player1Id, player2Id, fen } = savedState;
+            const { player1Id, player2Id, fen, moveCount } = savedState;
             // Create game instance without sockets
             const game = new Game(gameId, null, null, player1Id, player2Id);
+            // this.moveCount = moveCount;
             game.board.load(fen);
             return game;
         });
@@ -120,6 +121,7 @@ class Game {
                 player2Id: this.player2Id,
                 moveCount: this.moveCount
             };
+            // Save game state in Redis and database ( this will take time to reflect move on screen remove it);
             yield Promise.all([
                 RedisClient_1.default.set(`game:${this.gameId}`, JSON.stringify(gameState)),
                 RedisClient_1.default.set(`user:${this.player1Id}:game`, this.gameId),

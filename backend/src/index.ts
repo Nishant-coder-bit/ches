@@ -7,6 +7,7 @@ import RedisClient from './utils/RedisClient';
 import gameRoutes from './routes/gameRoutes';
 import userRoutes from './routes/userRoutes';
 import dotenv from 'dotenv';
+import { PrismaClient } from '@prisma/client';
 dotenv.config();
 const app = express();
 app.use(express.json());
@@ -18,7 +19,7 @@ app.use('/user', userRoutes);
 
 const gameManager = new GameManager();
 const wss = new WebSocketServer({ noServer: true });
-
+const client = new PrismaClient();
 // // REST endpoints
 // app.post('/api/games', async (req, res) => {
 //   try {
@@ -43,28 +44,52 @@ wss.on('connection', async (ws, req: any) => {
       ws.close(4403, 'Unauthorized');
       return;
     }
-
-    (ws as any).userId = decoded.userId;
-    
+     
+   
+    // console.log("ws.userId",decoded.userId);
+    console.log("decoded aftter validation",decoded);
+    const userId = await client.user.findUnique({
+       where:{
+        email:decoded.id
+       },
+        select:{
+          id:true
+        }
+    });
+    // console.log("userId",userId?.id);
+    (ws as any).userId =userId?.id;
     // Check for existing game
-    const existingGameId = await RedisClient.client.get(`user:${decoded.userId}:game`);
+    // console.log(`user:${userId?.id}:game`);
+    const existingGameId = await RedisClient.get(`user:${userId?.id}:game`);
+    console.log("existingGameId",existingGameId);
     if (existingGameId) {
-      await gameManager.handleReconnection(ws, existingGameId);
+      await gameManager.handleReconnection(ws, userId?.id);
     }
 
     ws.on('message', async (message) => {
-      const data = JSON.parse(message.toString());
+      let data;
+      try{
+         data = JSON.parse(message.toString());
+      }
+     catch(e){
+       ws.send(JSON.stringify({ type: 'ERROR', message: 'Invalid JSON' }));
+
        console.log("data",data);
+       return;
+     }
       switch (data.type) {
         case 'CREATE_GAME':
           try {
             const gameContext = await gameManager.createGame(data.userId, ws);
+            console.log("gameContext after create game is called",gameContext);
             if (gameContext) {
+              console.log("gameContext.gameId",gameContext.gameId);
               ws.send(JSON.stringify({ type: 'GAME_CREATED', gameId: gameContext.gameId , status:gameContext.status }));
             }
           } catch (error) {
             ws.send(JSON.stringify({ type: 'ERROR', message: 'Failed to create game' }));
           }
+         break;
         case 'JOIN_GAME':
           try {
 
@@ -81,6 +106,7 @@ wss.on('connection', async (ws, req: any) => {
         case 'MOVE':
           try {
             const game = await gameManager.getGame(data.userId);
+            console.log("game inside move ",game);
             if (game) {
               await game.makeMove((ws as any).userId, data.move);
             }
@@ -100,7 +126,9 @@ wss.on('connection', async (ws, req: any) => {
   }
 });
 
-const server = app.listen(process.env.PORT || 8080);
+const server = app.listen(process.env.PORT || 8080,()=>{
+  console.log(`Server is running on port ${process.env.PORT || 8080}`);
+});
 server.on('upgrade', (request, socket, head) => {
   wss.handleUpgrade(request, socket, head, (ws) => {
     wss.emit('connection', ws, request);
