@@ -35,14 +35,16 @@ class Game {
                 data: {
                     player1Id,
                     player2Id,
-                    status: 'ongoing',
+                    status: 'CREATED',
                     moves: '',
-                    fen: new chess_js_1.Chess().fen()
+                    fen: new chess_js_1.Chess().fen(),
                 }
             });
             const game = new Game(gameRecord.id, player1Socket, player2Socket, player1Id, player2Id);
             // Initialize game state in Redis
-            yield game.saveState();
+            yield game.saveState("STARTED", 60 * 10);
+            // Schedule game completion
+            game.scheduleGameCompletion(game.gameId, 60 * 10);
             // Send initial game state to both players
             game.sendToPlayer(player1Socket, {
                 type: 'GAME_START',
@@ -64,7 +66,7 @@ class Game {
             const { player1Id, player2Id, fen, moveCount } = savedState;
             // Create game instance without sockets
             const game = new Game(gameId, null, null, player1Id, player2Id);
-            // this.moveCount = moveCount;
+            game.moveCount = moveCount;
             game.board.load(fen);
             return game;
         });
@@ -99,7 +101,7 @@ class Game {
                 this.board.move(move);
                 this.moveCount++;
                 // Save game state
-                yield this.saveState();
+                yield this.saveState("ongoing", 60 * 10, true);
                 // Broadcast move to both players
                 this.broadcastGameState(move);
                 // Check for game over
@@ -112,7 +114,7 @@ class Game {
             }
         });
     }
-    saveState() {
+    saveState(status, TIMETOLIVE, isMove) {
         return __awaiter(this, void 0, void 0, function* () {
             const gameState = {
                 fen: this.board.fen(),
@@ -121,18 +123,34 @@ class Game {
                 player2Id: this.player2Id,
                 moveCount: this.moveCount
             };
-            // Save game state in Redis and database ( this will take time to reflect move on screen remove it);
-            yield Promise.all([
-                RedisClient_1.default.set(`game:${this.gameId}`, JSON.stringify(gameState)),
-                RedisClient_1.default.set(`user:${this.player1Id}:game`, this.gameId),
-                prisma.game.update({
+            if (isMove) {
+                yield RedisClient_1.default.set(`game:${this.gameId}`, JSON.stringify(gameState), TIMETOLIVE);
+                yield prisma.game.update({
                     where: { id: this.gameId },
                     data: {
                         moves: this.board.pgn(),
-                        fen: this.board.fen()
+                        fen: this.board.fen(),
+                        status: status || 'ONGOING'
                     }
-                })
-            ]);
+                });
+                // return; 
+            }
+            // Save game state in Redis and database ( this will take time to reflect move on screen remove it);
+            else {
+                yield Promise.all([
+                    RedisClient_1.default.set(`game:${this.gameId}`, JSON.stringify(gameState), TIMETOLIVE),
+                    RedisClient_1.default.set(`user:${this.player2Id}:game`, this.gameId, TIMETOLIVE),
+                    RedisClient_1.default.set(`user:${this.player1Id}:game`, this.gameId, TIMETOLIVE),
+                    prisma.game.update({
+                        where: { id: this.gameId },
+                        data: {
+                            moves: this.board.pgn(),
+                            fen: this.board.fen(),
+                            status: status || 'ONGOING'
+                        }
+                    })
+                ]);
+            }
         });
     }
     broadcastGameState(lastMove) {
@@ -151,20 +169,50 @@ class Game {
             const gameOverState = {
                 type: 'GAME_OVER',
                 winner,
-                fen: this.board.fen()
+                fen: this.board.fen(),
+                status: 'COMPLETED',
             };
+            this.handleDeleteGameKeysAndUpdateState(this.gameId);
             this.sendToPlayer(this.player1Socket, gameOverState);
             this.sendToPlayer(this.player2Socket, gameOverState);
-            yield prisma.game.update({
-                where: { id: this.gameId },
-                data: { status: 'finished' }
-            });
+        });
+    }
+    handleDeleteGameKeysAndUpdateState(gameId) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const game = yield RedisClient_1.default.get(`game:${gameId}`);
+            if (game) {
+                let gameData = JSON.parse(game);
+                //db call 
+                yield prisma.game.update({
+                    where: { id: gameId },
+                    data: { status: 'COMPLETED' }
+                });
+                yield RedisClient_1.default.del(`game:${gameId}`);
+                yield RedisClient_1.default.del(`user:${gameData.player1Id}:game`);
+                yield RedisClient_1.default.del(`user:${gameData.player2Id}:game`);
+                console.log(`Game ${gameId} auto-completed due to timeout.`);
+            }
         });
     }
     sendToPlayer(ws, data) {
         if (ws && ws.readyState === ws_1.WebSocket.OPEN) {
             ws.send(JSON.stringify(data));
         }
+        else {
+            // Handle case where WebSocket is not open
+            // start timer to check if socket is open 
+            // and then make the second player winner based on gamewinning condition
+        }
+    }
+    scheduleGameCompletion(gameId, ttl) {
+        return __awaiter(this, void 0, void 0, function* () {
+            setTimeout(() => __awaiter(this, void 0, void 0, function* () {
+                const game = yield RedisClient_1.default.get(`game:${gameId}`);
+                if (game) {
+                    this.handleDeleteGameKeysAndUpdateState(gameId);
+                }
+            }), ttl * 1000); // Convert to milliseconds
+        });
     }
 }
 exports.Game = Game;

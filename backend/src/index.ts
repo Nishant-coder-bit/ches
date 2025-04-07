@@ -20,20 +20,7 @@ app.use('/user', userRoutes);
 const gameManager = new GameManager();
 const wss = new WebSocketServer({ noServer: true });
 const client = new PrismaClient();
-// // REST endpoints
-// app.post('/api/games', async (req, res) => {
-//   try {
-//     const { player1Id, player2Id } = req.body;
-//     const game = await gameManager.createGame(player1Id, null);
-//     const gameToken = SessionService.generateGameToken(player1Id,gameId);
-    
-//     res.json({ gameId: game.gameId });
-//   } catch (error) {
-//     res.status(500).json({ error: 'Game creation failed' });
-//   }
-// });
 
-// WebSocket handling
 wss.on('connection', async (ws, req: any) => {
   try {
     const token = new URL(req.url, `http://${req.headers.host}`).searchParams.get('token');
@@ -41,13 +28,10 @@ wss.on('connection', async (ws, req: any) => {
     const decoded = await SessionService.validateAuthToken(token);
     
     if (!decoded) {
-      ws.close(4403, 'Unauthorized');
+      ws.close(403, 'Unauthorized');
       return;
     }
-     
-   
-    // console.log("ws.userId",decoded.userId);
-    console.log("decoded aftter validation",decoded);
+     console.log("decoded",decoded);
     const userId = await client.user.findUnique({
        where:{
         email:decoded.id
@@ -56,34 +40,33 @@ wss.on('connection', async (ws, req: any) => {
           id:true
         }
     });
-    // console.log("userId",userId?.id);
     (ws as any).userId =userId?.id;
-    // Check for existing game
-    // console.log(`user:${userId?.id}:game`);
     const existingGameId = await RedisClient.get(`user:${userId?.id}:game`);
-    console.log("existingGameId",existingGameId);
     if (existingGameId) {
-      await gameManager.handleReconnection(ws, userId?.id);
+      console.log("existing game id",existingGameId);
+    await gameManager.handleReconnection(ws, userId?.id);
+    
     }
 
-    ws.on('message', async (message) => {
+    ws.on('message', async (message:any) => {
       let data;
       try{
+        console.log("message",message.toString());
+   
          data = JSON.parse(message.toString());
+
+      
       }
      catch(e){
+      console.log("error",e);
        ws.send(JSON.stringify({ type: 'ERROR', message: 'Invalid JSON' }));
-
-       console.log("data",data);
        return;
      }
       switch (data.type) {
         case 'CREATE_GAME':
           try {
             const gameContext = await gameManager.createGame(data.userId, ws);
-            console.log("gameContext after create game is called",gameContext);
             if (gameContext) {
-              console.log("gameContext.gameId",gameContext.gameId);
               const data = JSON.stringify({ type: 'GAME_CREATED', gameId: gameContext.gameId , status:gameContext.status });
               broadcastToAllConnectedClients(data);
             
@@ -102,6 +85,7 @@ wss.on('connection', async (ws, req: any) => {
               ws.send(JSON.stringify({ type: 'GAME_JOINED', gameId: response.gameId , status:response.status, color:response.color }));
             // }
           } catch (error) {
+            console.error('Error joining game:', error);
             ws.send(JSON.stringify({ type: 'ERROR', message: 'Failed to join game' }));
           }
           break;
@@ -114,6 +98,7 @@ wss.on('connection', async (ws, req: any) => {
               await game.makeMove((ws as any).userId, data.move);
             }
           } catch (error) {
+            console.error('Error making move:', error);
             ws.send(JSON.stringify({ type: 'ERROR', message: 'Invalid move' }));
           }
           break;

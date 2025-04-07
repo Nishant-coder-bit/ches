@@ -18,8 +18,12 @@ class RedisClient {
     constructor() {
         this.client = new ioredis_1.default();
     }
-    set(key, value) {
+    set(key, value, TIMETOLIVE) {
         return __awaiter(this, void 0, void 0, function* () {
+            if (TIMETOLIVE) {
+                yield this.client.set(key, value, "EX", TIMETOLIVE);
+                return;
+            }
             yield this.client.set(key, value);
         });
     }

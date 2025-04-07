@@ -12,7 +12,7 @@ export class SessionService {
   }
   static async validateAuthToken(token: string): Promise<any| null> {
     try {
-      return jwt.verify(token, JWT_SECRET) as { userId: string };
+      return jwt.verify(token, JWT_SECRET) as { email: string };
     } catch (error) {
       return null;
     }

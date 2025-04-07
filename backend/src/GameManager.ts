@@ -43,12 +43,6 @@ export class GameManager {
     this.waitingPlayers.delete(waitingPlayerId);
     await RedisClient.del(`waiting_player:${waitingPlayerId}`);
 
-    // Store game association for both players
-    await Promise.all([
-      RedisClient.set(`user:${waitingPlayerId}:game`, game.gameId),
-      RedisClient.set(`user:${userId}:game`, game.gameId)
-    ]);
-
     return {
       status: 'ready',
       gameId: game.gameId,
@@ -69,18 +63,21 @@ export class GameManager {
       const gameState = await RedisClient.get(`game:${gameId}`);
       if (gameState) {
         const parsedState = JSON.parse(gameState);
-        console.log("parsedState",parsedState);
-        const restoredGame = await Game.restore(gameId, parsedState);
+
+        const restoredGame:Game = await Game.restore(gameId, parsedState);
         this.activeGames.set(gameId, restoredGame);
+
         await restoredGame.reconnectPlayer(ws, userId);
+        console.log("Game is restored for userId:", userId);
       }
     } else {
       // Game exists - reconnect player
       await game.reconnectPlayer(ws, userId);
+      console.log("is connected to active Game",userId);
     }
   }
 
-  async getGame(userId: string): Promise<Game | null> {
+  async getGame(userId: string): Promise<any> {
     // First check if user is in a game
     const gameId = await RedisClient.get(`user:${userId}:game`);
     if (!gameId) return null;
@@ -90,18 +87,20 @@ export class GameManager {
     if (game) return game;
 
     // If not in memory, try to restore from Redis
-    const gameState = await RedisClient.get(`game:${gameId}`);
-    if (!gameState) return null;
+    const gameFromRedis = await RedisClient.get(`user:${userId}:game`);
+    if (!gameFromRedis) return null;
 
-    try {
-      const parsedState = JSON.parse(gameState);
-      game = await Game.restore(gameId, parsedState);
-      this.activeGames.set(gameId, game);
-      return game;
-    } catch (error) {
-      console.error('Failed to restore game:', error);
-      return null;
-    }
+    // try {
+     
+    //   const parsedState = JSON.parse(gameState);
+    //   game = await Game.restore(gameId, parsedState);
+    //   if (!game) return null;
+    //   this.activeGames.set(gameId, game);
+    //   return game;
+    // } catch (error) {
+    //   console.error('Failed to restore game:', error);
+    //   return null;
+    // }
   }
   private async findWaitingPlayer(excludeUserId: string): Promise<string | null> {
     const waitingPlayers = await RedisClient.keys('waiting_player:*');

@@ -40,9 +40,10 @@ export class Game {
       data: {
         player1Id,
         player2Id,
-        status: 'ongoing',
+        status: 'CREATED',
         moves: '',
-        fen: new Chess().fen()
+        fen: new Chess().fen(),
+      
       }
     });
 
@@ -55,8 +56,9 @@ export class Game {
     );
 
     // Initialize game state in Redis
-    await game.saveState();
-
+    await game.saveState("STARTED",60*10);
+     // Schedule game completion
+    game.scheduleGameCompletion(game.gameId,60*10);
     // Send initial game state to both players
     game.sendToPlayer(player1Socket, {
       type: 'GAME_START',
@@ -75,7 +77,7 @@ export class Game {
     return game;
   }
 
-  static async restore(gameId: string, savedState: any): Promise<Game> {
+  static async restore(gameId: string, savedState: any): Promise<any> {
     const { player1Id, player2Id, fen,moveCount } = savedState;
   
     // Create game instance without sockets
@@ -86,7 +88,7 @@ export class Game {
       player1Id,
       player2Id,
     );
-    // this.moveCount = moveCount;
+    game.moveCount = moveCount;
     game.board.load(fen);
     return game;
   }
@@ -121,7 +123,7 @@ export class Game {
       this.moveCount++;
       
       // Save game state
-      await this.saveState();
+      await this.saveState("ongoing",60*10,true);
       
       // Broadcast move to both players
       this.broadcastGameState(move);
@@ -135,7 +137,7 @@ export class Game {
     }
   }
 
-  private async saveState() {
+  private async saveState(status?:string,TIMETOLIVE?:number,isMove?:boolean) {
     const gameState = {
       fen: this.board.fen(),
       pgn: this.board.pgn(),
@@ -143,18 +145,35 @@ export class Game {
       player2Id: this.player2Id,
       moveCount: this.moveCount
     };
+    if(isMove){
+      await RedisClient.set(`game:${this.gameId}`, JSON.stringify(gameState),24*60*60);
+     await prisma.game.update({
+      where: { id: this.gameId },
+      data: {
+        moves: this.board.pgn(),
+        fen: this.board.fen(),
+        status: status || 'ONGOING'
+      }
+    });
+    // return; 
+    }
     // Save game state in Redis and database ( this will take time to reflect move on screen remove it);
+  else{
     await Promise.all([
-      RedisClient.set(`game:${this.gameId}`, JSON.stringify(gameState)),
-      RedisClient.set( `user:${this.player1Id}:game`, this.gameId),
+      
+      RedisClient.set(`game:${this.gameId}`, JSON.stringify(gameState),24*60*60),
+      RedisClient.set( `user:${this.player2Id}:game`, this.gameId, TIMETOLIVE),
+      RedisClient.set( `user:${this.player1Id}:game`, this.gameId, TIMETOLIVE),
       prisma.game.update({
         where: { id: this.gameId },
         data: {
           moves: this.board.pgn(),
-          fen: this.board.fen()
+          fen: this.board.fen(),
+          status: status || 'ONGOING'
         }
       })
     ]);
+  }
   }
 
   private broadcastGameState(lastMove?: { from: string; to: string }) {
@@ -175,21 +194,51 @@ export class Game {
     const gameOverState = {
       type: 'GAME_OVER',
       winner,
-      fen: this.board.fen()
+      fen: this.board.fen(),
+      status: 'COMPLETED',
     };
+
+
+    this.handleDeleteGameKeysAndUpdateState(this.gameId);
 
     this.sendToPlayer(this.player1Socket, gameOverState);
     this.sendToPlayer(this.player2Socket, gameOverState);
 
-    await prisma.game.update({
-      where: { id: this.gameId },
-      data: { status: 'finished' }
-    });
+  }
+  private async handleDeleteGameKeysAndUpdateState(gameId:string) {
+    const game = await RedisClient.get(`game:${gameId}`);
+    if (game) {
+        let gameData = JSON.parse(game);
+            //db call 
+            await prisma.game.update({
+                where: { id: gameId },
+                data: { status: 'COMPLETED' }
+            });
+            await RedisClient.del(`game:${gameId}`); 
+            await RedisClient.del(`user:${gameData.player1Id}:game`);
+            await RedisClient.del(`user:${gameData.player2Id}:game`);
+            this.player1Socket.send(JSON.stringify({ type: 'GAME_COMPLETED',message: 'Game completed' }));
+            this.player2Socket.send(JSON.stringify({ type: 'GAME_COMPLETED',message: 'Game completed' }));
+            console.log(`Game ${gameId} auto-completed due to timeout.`);
+    } 
   }
 
   private sendToPlayer(ws: WebSocket, data: any) {
     if (ws && ws.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify(data));
+    }else{
+      // Handle case where WebSocket is not open
+      // start timer to check if socket is open 
+      // and then make the second player winner based on gamewinning condition
     }
+  }
+
+   async  scheduleGameCompletion(gameId:any,ttl:any) {
+    setTimeout(async () => {
+        const game = await RedisClient.get(`game:${gameId}`);
+        if (game) {
+           this.handleDeleteGameKeysAndUpdateState(gameId);
+        }
+    }, ttl * 1000); // Convert to milliseconds
   }
 }

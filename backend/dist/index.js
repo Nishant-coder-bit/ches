@@ -31,29 +31,16 @@ app.use('/user', userRoutes_1.default);
 const gameManager = new GameManager_1.GameManager();
 const wss = new ws_1.WebSocketServer({ noServer: true });
 const client = new client_1.PrismaClient();
-// // REST endpoints
-// app.post('/api/games', async (req, res) => {
-//   try {
-//     const { player1Id, player2Id } = req.body;
-//     const game = await gameManager.createGame(player1Id, null);
-//     const gameToken = SessionService.generateGameToken(player1Id,gameId);
-//     res.json({ gameId: game.gameId });
-//   } catch (error) {
-//     res.status(500).json({ error: 'Game creation failed' });
-//   }
-// });
-// WebSocket handling
 wss.on('connection', (ws, req) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const token = new URL(req.url, `http://${req.headers.host}`).searchParams.get('token');
         //@ts-ignore
         const decoded = yield SessionService_1.SessionService.validateAuthToken(token);
         if (!decoded) {
-            ws.close(4403, 'Unauthorized');
+            ws.close(403, 'Unauthorized');
             return;
         }
-        // console.log("ws.userId",decoded.userId);
-        console.log("decoded aftter validation", decoded);
+        console.log("decoded", decoded);
         const userId = yield client.user.findUnique({
             where: {
                 email: decoded.id
@@ -62,32 +49,28 @@ wss.on('connection', (ws, req) => __awaiter(void 0, void 0, void 0, function* ()
                 id: true
             }
         });
-        // console.log("userId",userId?.id);
         ws.userId = userId === null || userId === void 0 ? void 0 : userId.id;
-        // Check for existing game
-        // console.log(`user:${userId?.id}:game`);
         const existingGameId = yield RedisClient_1.default.get(`user:${userId === null || userId === void 0 ? void 0 : userId.id}:game`);
-        console.log("existingGameId", existingGameId);
         if (existingGameId) {
+            console.log("existing game id", existingGameId);
             yield gameManager.handleReconnection(ws, userId === null || userId === void 0 ? void 0 : userId.id);
         }
         ws.on('message', (message) => __awaiter(void 0, void 0, void 0, function* () {
             let data;
             try {
+                console.log("message", message.toString());
                 data = JSON.parse(message.toString());
             }
             catch (e) {
+                console.log("error", e);
                 ws.send(JSON.stringify({ type: 'ERROR', message: 'Invalid JSON' }));
-                console.log("data", data);
                 return;
             }
             switch (data.type) {
                 case 'CREATE_GAME':
                     try {
                         const gameContext = yield gameManager.createGame(data.userId, ws);
-                        console.log("gameContext after create game is called", gameContext);
                         if (gameContext) {
-                            console.log("gameContext.gameId", gameContext.gameId);
                             const data = JSON.stringify({ type: 'GAME_CREATED', gameId: gameContext.gameId, status: gameContext.status });
                             broadcastToAllConnectedClients(data);
                         }
@@ -105,6 +88,7 @@ wss.on('connection', (ws, req) => __awaiter(void 0, void 0, void 0, function* ()
                         // }
                     }
                     catch (error) {
+                        console.error('Error joining game:', error);
                         ws.send(JSON.stringify({ type: 'ERROR', message: 'Failed to join game' }));
                     }
                     break;
@@ -117,6 +101,7 @@ wss.on('connection', (ws, req) => __awaiter(void 0, void 0, void 0, function* ()
                         }
                     }
                     catch (error) {
+                        console.error('Error making move:', error);
                         ws.send(JSON.stringify({ type: 'ERROR', message: 'Invalid move' }));
                     }
                     break;

@@ -8,9 +8,12 @@ class RedisClient {
   }
   
 
-  
 
-  async set(key: string, value: string): Promise<void> {
+  async set(key: string, value: string,TIMETOLIVE?:number): Promise<void> {
+    if (TIMETOLIVE) {
+      await this.client.set(key, value,"EX",TIMETOLIVE);
+      return;
+    }
     await this.client.set(key, value);
   }
 
