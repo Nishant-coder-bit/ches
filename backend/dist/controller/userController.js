@@ -50,25 +50,33 @@ exports.userController = {
         return __awaiter(this, void 0, void 0, function* () {
             //add zod validation here
             try {
-                yield client.user.create({
-                    data: {
-                        name: req.body.name,
-                        email: req.body.email,
-                        password: req.body.password,
-                    },
-                });
                 const email = (req.body).email;
                 const existingUser = yield client.user.findFirst({
                     where: {
                         email
                     },
                 });
+                if (existingUser) {
+                    res.status(409).json({
+                        message: "User already exists",
+                    });
+                }
+                const user = yield client.user.create({
+                    data: {
+                        name: req.body.name,
+                        email: req.body.email,
+                        password: req.body.password,
+                    },
+                });
                 const token = jsonwebtoken_1.default.sign({
-                    id: existingUser === null || existingUser === void 0 ? void 0 : existingUser.email,
-                }, "12345");
+                    id: user === null || user === void 0 ? void 0 : user.email,
+                }, "12345", {
+                    expiresIn: "1h",
+                });
                 res.json({
                     message: "user signed up successfully",
                     token: token,
+                    userId: user === null || user === void 0 ? void 0 : user.id,
                 });
             }
             catch (e) {
@@ -109,6 +117,7 @@ exports.userController = {
                 }, "12345");
                 res.json({
                     token,
+                    userId: existingUser.id,
                 });
             }
             catch (e) {

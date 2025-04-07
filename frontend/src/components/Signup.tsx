@@ -5,7 +5,6 @@ import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faUserPlus } from "@fortawesome/free-solid-svg-icons";
-
 const Signup = ({ onClose }: { onClose: () => void }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -47,10 +46,10 @@ const Signup = ({ onClose }: { onClose: () => void }) => {
       });
 
       const token = response.data.token;
-      localStorage.setItem("token", token);
-      axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-
-      navigate(`/game?email=${email}`);
+      localStorage.setItem(`${response.data.userId}+token`, token);
+      // axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+      console.log(response.data.userId);
+      navigate(`/game?userId=${response.data.userId}`);
     } catch (error) {
       console.error("Signup error:", error);
       toast.error("Invalid signup details. Please check and try again.", {

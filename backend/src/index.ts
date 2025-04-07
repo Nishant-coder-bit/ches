@@ -1,5 +1,5 @@
 import express from 'express';
-import { WebSocketServer } from 'ws';
+import { WebSocket, WebSocketServer } from 'ws';
 import { GameManager } from './GameManager';
 import { SessionService } from './services/SessionService';
 import cors from 'cors';
@@ -68,7 +68,7 @@ wss.on('connection', async (ws, req: any) => {
             const gameContext = await gameManager.createGame(data.userId, ws);
             if (gameContext) {
               const data = JSON.stringify({ type: 'GAME_CREATED', gameId: gameContext.gameId , status:gameContext.status });
-              broadcastToAllConnectedClients(data);
+              broadcastToAllConnectedClients(data,ws);
             
             }
           } catch (error) {
@@ -82,8 +82,8 @@ wss.on('connection', async (ws, req: any) => {
             // if (gameContext) {
              const response =  await gameManager.joinGame(ws,data.userId);
 
-              ws.send(JSON.stringify({ type: 'GAME_JOINED', gameId: response.gameId , status:response.status, color:response.color }));
-            // }
+              const broadcastData = (JSON.stringify({ type: 'GAME_JOINED', gameId: response.gameId , status:response.status, color:response.color }));
+              broadcastToAllConnectedClients(broadcastData,ws);
           } catch (error) {
             console.error('Error joining game:', error);
             ws.send(JSON.stringify({ type: 'ERROR', message: 'Failed to join game' }));
@@ -117,10 +117,10 @@ wss.on('connection', async (ws, req: any) => {
 const server = app.listen(process.env.PORT || 8080,()=>{
   console.log(`Server is running on port ${process.env.PORT || 8080}`);
 });
- function broadcastToAllConnectedClients(data:any){
+ function broadcastToAllConnectedClients(data:any,ws?:WebSocket){
   // Broadcast to all connected clients
 wss.clients.forEach(async client => {
-  if (client.readyState === WebSocket.OPEN ) {
+  if (client.readyState === WebSocket.OPEN && client !== ws) {
    await client.send(data);
   }
 });

@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { userService } from "../services/userService";
 import { PrismaClient } from "@prisma/client";
 import jwt from "jsonwebtoken";
+import exp from "constants";
 
 const client = new PrismaClient();
 
@@ -37,28 +38,40 @@ export const userController = {
     //add zod validation here
 
     try {
-      await client.user.create({
-        data: {
-          name: req.body.name,
-          email: req.body.email,
-          password: req.body.password,
-        },
-      });
+ 
       const email = (req.body).email
       const existingUser = await client.user.findFirst({
         where: {
           email
         },
       });
+      if(existingUser){
+         res.status(409).json({
+          message: "User already exists",
+        });
+      }
+      const user=  await client.user.create({
+        data: {
+          name: req.body.name,
+          email: req.body.email,
+          password: req.body.password,
+        },
+      });
       const token = jwt.sign(
         {
-          id: existingUser?.email,
+          id: user?.email,
         },
-        "12345"
+        "12345",
+        {
+          expiresIn: "1h",
+        }
+        
       );
+
       res.json({
         message: "user signed up successfully",
         token: token,
+        userId: user?.id,
       });
     } catch (e) {
       console.log("error while signup", e);
@@ -102,6 +115,7 @@ export const userController = {
       );
       res.json({
         token,
+        userId: existingUser.id,
       });
     }catch(e){
 

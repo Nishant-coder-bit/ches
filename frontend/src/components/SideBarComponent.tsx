@@ -15,7 +15,7 @@ const mockUser = {
   ]
 };
 
-export const SidebarComponent = ({ moves, playerColor }: { moves: Move[], playerColor: string }) => {
+export const SidebarComponent = ({ moves, playerColor }: { moves:Move[], playerColor: string }) => {
   const [collapsed, setCollapsed] = useState(false);
 
   return (

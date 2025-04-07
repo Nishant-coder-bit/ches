@@ -31,9 +31,10 @@ const Login = ({ onClose }: { onClose: () => void }) => {
         onClose: onClose, // Call onClose prop on successful login
       });
 
-      localStorage.setItem("token", token);
-      axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-      navigate(`/game`);
+      localStorage.setItem(`${response.data.userId}+token`, token)
+      // axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+      console.log(response.data.userId);
+      navigate(`/game?userId=${response.data.userId}`);
     } catch (e) {
       console.error("Login error:", e);
       toast.error("Invalid email or password.", {

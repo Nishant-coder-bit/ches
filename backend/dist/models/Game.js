@@ -124,7 +124,7 @@ class Game {
                 moveCount: this.moveCount
             };
             if (isMove) {
-                yield RedisClient_1.default.set(`game:${this.gameId}`, JSON.stringify(gameState), TIMETOLIVE);
+                yield RedisClient_1.default.set(`game:${this.gameId}`, JSON.stringify(gameState), 24 * 60 * 60);
                 yield prisma.game.update({
                     where: { id: this.gameId },
                     data: {
@@ -138,7 +138,7 @@ class Game {
             // Save game state in Redis and database ( this will take time to reflect move on screen remove it);
             else {
                 yield Promise.all([
-                    RedisClient_1.default.set(`game:${this.gameId}`, JSON.stringify(gameState), TIMETOLIVE),
+                    RedisClient_1.default.set(`game:${this.gameId}`, JSON.stringify(gameState), 24 * 60 * 60),
                     RedisClient_1.default.set(`user:${this.player2Id}:game`, this.gameId, TIMETOLIVE),
                     RedisClient_1.default.set(`user:${this.player1Id}:game`, this.gameId, TIMETOLIVE),
                     prisma.game.update({
@@ -190,6 +190,8 @@ class Game {
                 yield RedisClient_1.default.del(`game:${gameId}`);
                 yield RedisClient_1.default.del(`user:${gameData.player1Id}:game`);
                 yield RedisClient_1.default.del(`user:${gameData.player2Id}:game`);
+                this.player1Socket.send(JSON.stringify({ type: 'GAME_COMPLETED', message: 'Game completed' }));
+                this.player2Socket.send(JSON.stringify({ type: 'GAME_COMPLETED', message: 'Game completed' }));
                 console.log(`Game ${gameId} auto-completed due to timeout.`);
             }
         });
