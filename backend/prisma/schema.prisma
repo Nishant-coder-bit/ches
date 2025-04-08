@@ -31,7 +31,7 @@ model Game {
   winnerId String?
   moves String @default("") 
   fen   String @default("")
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime? @updatedAt
   status String @default("NotStarted")
 }
 

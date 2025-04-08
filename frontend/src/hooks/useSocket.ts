@@ -1,12 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const WS_URL = "ws://localhost:8080";
-export function useSocket(userId:string) {
-  const [socket, setSocket] = useState<WebSocket> ();
-  const [isConnected, setIsConnected] = useState(false);
 
+export function useSocket(userId:string) {
+  const socketRef = useRef<WebSocket | null>(null);
+  const [isConnected, setIsConnected] = useState(false);
+  const [messages, setMessages] = useState<any[]>([]);
   useEffect(() => {
-    let ws:WebSocket;
+   
        console.log("Connecting to WebSocket...", userId);
       let token = localStorage.getItem(`${userId}+token`) || ""; 
       
@@ -14,27 +15,31 @@ export function useSocket(userId:string) {
           console.log("No token found. Please login first.");
           return ;
       }
-      ws = new WebSocket(`${WS_URL}?token=${token}`);
+      if(!socketRef.current) {
+      socketRef.current = new WebSocket(`${WS_URL}?token=${token}`);
 
-      ws.onopen = () => {
+      socketRef.current.onopen = () => {
         console.log("WebSocket Connected")
         setIsConnected(true);
-        setSocket(ws);
-
-      };
-
-      ws.onclose = () => {
+    };
+    socketRef.current.onmessage = (event) => {
+      const message = JSON.parse(event.data.toString());
+      setMessages((prev) => [...prev, message]);
+    };
+      socketRef.current.onclose = () => {
         console.log("WebSocket Disconnected. Reconnecting...");
         setIsConnected(false);
-
+        socketRef.current = null;
       };
-
-      ws.onerror = (err) => {
-        console.log("WebSocket Error:", err);
-        setIsConnected(false);
-        ws.close();
+    }
+      return () => {
+        socketRef.current?.close();
       };
-  }, []);
+    }, []);
 
-  return { socket ,isConnected};
+    const sendMessage = (message: any) => {
+      socketRef.current?.send(message);
+    };
+  
+    return { socket: socketRef.current, messages, sendMessage };
 }

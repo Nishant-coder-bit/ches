@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Chessboard } from "react-chessboard";
 import { Chess } from "chess.js";
 import { useSocket } from "../hooks/useSocket";
@@ -33,24 +33,30 @@ export const Game = ({params}:any) => {
   const [moves, setMoves] = useState<Move[]>([]);
   const [playerColor, setPlayerColor] = useState<"white" | "black">("white");
   const [turn, setTurn] = useState<"white" | "black">("white");
-  const { socket, isConnected } = useSocket(userId);
+  const { socket, messages,sendMessage } = useSocket(userId);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isWaiting, setIsWaiting] = useState(false);
   const [joinGame, setJoinGame] = useState(false);
+  const lastMessageRef = useRef<any>(null);
   useEffect(() => {
-    if (!socket) return;
+    if (messages.length === 0) return;
 
-    socket.onmessage = (event:any) => {
-      const message = JSON.parse(event.data.toString());
-      
+    const message: any = messages[messages.length - 1];
+    
+    // Avoid processing the same message multiple times
+    if (lastMessageRef.current === message) return;
+    lastMessageRef.current = message;
+  
+    console.log("Received:", message);
       switch (message.type) {
         case 'GAME_START':
           setStarted(true);
           setPlayerColor(message.color);
-          setGame(new Chess(message.payload.fen));
-          setMoves(parsePGNToMoves(message.payload.moves));
+          setGame(new Chess(message.fen));
+          setMoves(parsePGNToMoves(message.moves));
           break;
         case 'GAME_RESTORED':
+          console.log("Game restored");
           setStarted(true);
           setPlayerColor(message.color);
           setGame(new Chess(message.fen));
@@ -58,10 +64,31 @@ export const Game = ({params}:any) => {
           setMoves(parsePGNToMoves(message.moves));
           break;
         case 'GAME_UPDATE':
-          game.move(message.lastMove);
-          setMoves(prev => [...prev, message.payload]);
+          const updatedGame = new Chess(game.fen()); // Clone the game state
+          if (!message.lastMove || !message.lastMove.from || !message.lastMove.to) {
+            console.error("Invalid move format received:", message.lastMove);
+            return;
+          }
+          
+          const legalMoves = updatedGame.moves({ verbose: true });
+          const isMoveValid = legalMoves.some(
+            (m) => m.from === message.lastMove.from && m.to === message.lastMove.to
+          );
+          
+          if (!isMoveValid) {
+            console.error("Received an illegal move:", message.lastMove);
+            return;
+          }
+          
+          updatedGame.move(message.lastMove);
+          setGame(updatedGame);
+          setFen(updatedGame.fen());
+          
+  
+          setGame(updatedGame);
+          setMoves((prev) => [...prev, message.payload]);
           setTurn(message.color === "white" ? "white" : "black");
-          setFen(game.fen());
+          setFen(updatedGame.fen());
           break;
 
         case 'GAME_COMPLETED':
@@ -85,8 +112,8 @@ export const Game = ({params}:any) => {
           setStarted(false);
           break;
       }
-    };
-  }, [socket, game, fen]);
+    // };
+  }, [messages]);
 
   const handleMove = (move: Move) => {
     try {
@@ -95,7 +122,7 @@ export const Game = ({params}:any) => {
       const result = game.move(move);
       if (!result) return false;
 
-      socket?.send(JSON.stringify({ type: MOVE, move: move ,userId:userId}));
+      sendMessage(JSON.stringify({ type: MOVE, move: move ,userId:userId}));
       setFen(game.fen());
       return true;
     } catch {
@@ -143,7 +170,7 @@ export const Game = ({params}:any) => {
 
               {(!started && !joinGame) && (
                 <button
-                  onClick={() => socket?.send(JSON.stringify({ type:  'CREATE_GAME',userId:userId}))}
+                  onClick={() => sendMessage(JSON.stringify({ type:  'CREATE_GAME',userId:userId}))}
                   className="w-full mt-6 bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700"
                 >
                   Create Game
@@ -151,7 +178,7 @@ export const Game = ({params}:any) => {
               )}
               {(!started && joinGame) && (
                 <button
-                  onClick={() => socket?.send(JSON.stringify({ type:  'JOIN_GAME',userId:userId}))}
+                  onClick={() => sendMessage(JSON.stringify({ type:  'JOIN_GAME',userId:userId}))}
                   className="w-full mt-6 bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700"
                 >
                   Join Game
