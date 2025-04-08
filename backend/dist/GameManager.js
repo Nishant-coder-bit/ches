@@ -15,7 +15,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.GameManager = void 0;
 const Game_1 = require("./models/Game");
 const RedisClient_1 = __importDefault(require("./utils/RedisClient"));
+const client_1 = require("@prisma/client");
 const TIMETOLIVE = 60 * 5; // 5 minutes
+const client = new client_1.PrismaClient();
 class GameManager {
     constructor() {
         this.activeGames = new Map();
@@ -31,6 +33,38 @@ class GameManager {
                 status: 'waiting',
                 gameId: undefined,
             };
+        });
+    }
+    stopGame(gameId, userId) {
+        return __awaiter(this, void 0, void 0, function* () {
+            console.log(`insid stopGame with ${gameId} and ${userId}`);
+            const game = this.activeGames.get(gameId);
+            console.log("inside stopGame", game);
+            if (game) {
+                this.activeGames.delete(gameId);
+                console.log("gameId deleted from activeGames", gameId);
+                yield RedisClient_1.default.del(`game:${gameId}`);
+                // how to delete key from redis 
+                //update the status in db
+                const gameToBeStopped = yield client.game.findUnique({
+                    where: { id: gameId },
+                    select: { player1Id: true, player2Id: true }
+                });
+                console.log("gameToBeStopped", gameToBeStopped);
+                if (!gameToBeStopped)
+                    return;
+                yield RedisClient_1.default.del(`user:${gameToBeStopped.player1Id}:game`);
+                yield RedisClient_1.default.del(`user:${gameToBeStopped.player2Id}:game`);
+                const winnerId = gameToBeStopped.player1Id === userId ? gameToBeStopped.player2Id : gameToBeStopped.player1Id;
+                yield client.game.update({
+                    where: { id: gameId },
+                    data: { status: 'COMPLETED', winnerId: winnerId }
+                });
+                return {
+                    status: 'stopped',
+                    winnerId: winnerId
+                };
+            }
         });
     }
     joinGame(ws, userId) {
@@ -100,6 +134,7 @@ class GameManager {
             const gameFromRedis = yield RedisClient_1.default.get(`user:${userId}:game`);
             if (!gameFromRedis)
                 return null;
+            return gameFromRedis;
             // try {
             //   const parsedState = JSON.parse(gameState);
             //   game = await Game.restore(gameId, parsedState);

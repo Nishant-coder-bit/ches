@@ -105,6 +105,22 @@ wss.on('connection', (ws, req) => __awaiter(void 0, void 0, void 0, function* ()
                         ws.send(JSON.stringify({ type: 'ERROR', message: 'Invalid move' }));
                     }
                     break;
+                case 'STOP_GAME':
+                    try {
+                        const game = yield gameManager.getGame(data.userId);
+                        if (game) {
+                            console.log(`game inside STOP_GAME WITH id ${game.gameId} and userId ${data.userId}`);
+                            // console.log(JSON.parse(game));
+                            const result = gameManager.stopGame(game.gameId, data.userId);
+                            const message = JSON.stringify({ type: 'GAME_TERMINATED', reason: data.reason, winnerId: result.winnerId });
+                            broadcastToAllConnectedClients(message);
+                        }
+                    }
+                    catch (error) {
+                        console.error('Error stopping game:', error);
+                        ws.send(JSON.stringify({ type: 'ERROR', message: 'Failed to stop game' }));
+                    }
+                    break;
             }
         }));
         ws.on('close', () => {

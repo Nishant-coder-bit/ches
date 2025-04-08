@@ -205,21 +205,30 @@ export class Game {
     this.sendToPlayer(this.player2Socket, gameOverState);
 
   }
-  private async handleDeleteGameKeysAndUpdateState(gameId:string) {
+  private async handleDeleteGameKeysAndUpdateState(gameId:string,isTerminated?:boolean,id?:string,isTerminatedId?:boolean) {
     const game = await RedisClient.get(`game:${gameId}`);
+    let winnerId=null;
+    if(isTerminatedId)
+       winnerId = this.player2Id
+     console.log(winnerId);
     if (game) {
         let gameData = JSON.parse(game);
             //db call 
+            
             await prisma.game.update({
                 where: { id: gameId },
-                data: { status: 'COMPLETED' }
+                data: { status: 'COMPLETED',   winnerId: winnerId  }
+              
             });
             await RedisClient.del(`game:${gameId}`); 
             await RedisClient.del(`user:${gameData.player1Id}:game`);
             await RedisClient.del(`user:${gameData.player2Id}:game`);
-            this.player1Socket.send(JSON.stringify({ type: 'GAME_COMPLETED',message: 'Game completed' }));
-            this.player2Socket.send(JSON.stringify({ type: 'GAME_COMPLETED',message: 'Game completed' }));
-            console.log(`Game ${gameId} auto-completed due to timeout.`);
+            if(!isTerminatedId){
+              this.player1Socket.send(JSON.stringify({ type: 'GAME_COMPLETED',message: 'Game completed' }));
+              this.player2Socket.send(JSON.stringify({ type: 'GAME_COMPLETED',message: 'Game completed' }));
+              console.log(`Game ${gameId} auto-completed due to timeout.`);
+            }
+           
     } 
   }
 
@@ -232,6 +241,17 @@ export class Game {
       // and then make the second player winner based on gamewinning condition
     }
   }
+  // public stopGame(gameId: string,id?:string) {
+  //   // Close WebSocket connections
+  //   if (this.player1Socket) {
+  //     this.player1Socket.close();
+  //   }
+  //   if (this.player2Socket) {
+  //     this.player2Socket.close();
+  //   }
+
+  //   this.handleDeleteGameKeysAndUpdateState(gameId,true,id,true);
+  // }
 
    async  scheduleGameCompletion(gameId:any,ttl:any) {
     setTimeout(async () => {

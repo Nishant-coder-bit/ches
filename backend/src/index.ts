@@ -7,7 +7,7 @@ import RedisClient from './utils/RedisClient';
 import gameRoutes from './routes/gameRoutes';
 import userRoutes from './routes/userRoutes';
 import dotenv from 'dotenv';
-import { PrismaClient } from '@prisma/client';
+import { Game, PrismaClient } from '@prisma/client';
 dotenv.config();
 const app = express();
 app.use(express.json());
@@ -100,6 +100,21 @@ wss.on('connection', async (ws, req: any) => {
           } catch (error) {
             console.error('Error making move:', error);
             ws.send(JSON.stringify({ type: 'ERROR', message: 'Invalid move' }));
+          }
+          break;
+        case 'STOP_GAME':
+          try {
+            const game = await gameManager.getGame(data.userId);
+            if (game) {
+
+              const result:any = gameManager.stopGame(game.gameId,data.userId);
+                 
+              const message = JSON.stringify({ type: 'GAME_TERMINATED',reason:data.reason, winnerId:result.winnerId });
+              broadcastToAllConnectedClients(message);
+            }
+          } catch (error) {
+            console.error('Error stopping game:', error);
+            ws.send(JSON.stringify({ type: 'ERROR', message: 'Failed to stop game' }));
           }
           break;
       }

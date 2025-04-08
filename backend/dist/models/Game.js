@@ -177,22 +177,28 @@ class Game {
             this.sendToPlayer(this.player2Socket, gameOverState);
         });
     }
-    handleDeleteGameKeysAndUpdateState(gameId) {
+    handleDeleteGameKeysAndUpdateState(gameId, isTerminated, id, isTerminatedId) {
         return __awaiter(this, void 0, void 0, function* () {
             const game = yield RedisClient_1.default.get(`game:${gameId}`);
+            let winnerId = null;
+            if (isTerminatedId)
+                winnerId = this.player2Id;
+            console.log(winnerId);
             if (game) {
                 let gameData = JSON.parse(game);
                 //db call 
                 yield prisma.game.update({
                     where: { id: gameId },
-                    data: { status: 'COMPLETED' }
+                    data: { status: 'COMPLETED', winnerId: winnerId }
                 });
                 yield RedisClient_1.default.del(`game:${gameId}`);
                 yield RedisClient_1.default.del(`user:${gameData.player1Id}:game`);
                 yield RedisClient_1.default.del(`user:${gameData.player2Id}:game`);
-                this.player1Socket.send(JSON.stringify({ type: 'GAME_COMPLETED', message: 'Game completed' }));
-                this.player2Socket.send(JSON.stringify({ type: 'GAME_COMPLETED', message: 'Game completed' }));
-                console.log(`Game ${gameId} auto-completed due to timeout.`);
+                if (!isTerminatedId) {
+                    this.player1Socket.send(JSON.stringify({ type: 'GAME_COMPLETED', message: 'Game completed' }));
+                    this.player2Socket.send(JSON.stringify({ type: 'GAME_COMPLETED', message: 'Game completed' }));
+                    console.log(`Game ${gameId} auto-completed due to timeout.`);
+                }
             }
         });
     }
@@ -206,6 +212,16 @@ class Game {
             // and then make the second player winner based on gamewinning condition
         }
     }
+    // public stopGame(gameId: string,id?:string) {
+    //   // Close WebSocket connections
+    //   if (this.player1Socket) {
+    //     this.player1Socket.close();
+    //   }
+    //   if (this.player2Socket) {
+    //     this.player2Socket.close();
+    //   }
+    //   this.handleDeleteGameKeysAndUpdateState(gameId,true,id,true);
+    // }
     scheduleGameCompletion(gameId, ttl) {
         return __awaiter(this, void 0, void 0, function* () {
             setTimeout(() => __awaiter(this, void 0, void 0, function* () {

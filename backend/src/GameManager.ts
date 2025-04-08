@@ -2,7 +2,9 @@ import { WebSocket } from "ws";
 import { Game } from "./models/Game";
 import RedisClient from "./utils/RedisClient";
 import { SessionService } from "./services/SessionService";
+import { PrismaClient } from "@prisma/client";
 const TIMETOLIVE = 60*5; // 5 minutes
+const client = new PrismaClient();
 export class GameManager {
   private activeGames: Map<string, Game> = new Map();
   private waitingPlayers: Map<string, WebSocket> = new Map(); // userId -> WebSocket
@@ -18,7 +20,36 @@ export class GameManager {
       gameId: undefined,
     };
   }
-
+  async stopGame(gameId: string,userId:string) {
+    console.log(`insid stopGame with ${gameId} and ${userId}`);
+    const game = this.activeGames.get(gameId);
+     console.log("inside stopGame",game);
+    if (game) {
+      this.activeGames.delete(gameId);
+      console.log("gameId deleted from activeGames",gameId);
+      await RedisClient.del(`game:${gameId}`);
+       // how to delete key from redis 
+       //update the status in db
+          const gameToBeStopped = await client.game.findUnique({
+        where: { id: gameId },
+        select: { player1Id: true, player2Id: true }
+      });
+      console.log("gameToBeStopped",gameToBeStopped);
+      if (!gameToBeStopped) return;
+      await RedisClient.del(`user:${gameToBeStopped.player1Id}:game`);
+      await RedisClient.del(`user:${gameToBeStopped.player2Id}:game`);
+      const winnerId = gameToBeStopped.player1Id === userId ? gameToBeStopped.player2Id : gameToBeStopped.player1Id;
+       await client.game.update({
+        where: { id: gameId },
+        data: { status: 'COMPLETED',   winnerId: winnerId  }
+      
+    });
+    return {
+      status: 'stopped',
+      winnerId: winnerId
+    }
+    }
+  }
   async joinGame( ws: WebSocket,userId: string): Promise<{ status: string; gameId?: string; color?: string}> {
     // Check if there's a waiting player
     const waitingPlayerId = await this.findWaitingPlayer(userId);
@@ -89,6 +120,7 @@ export class GameManager {
     // If not in memory, try to restore from Redis
     const gameFromRedis = await RedisClient.get(`user:${userId}:game`);
     if (!gameFromRedis) return null;
+    return gameFromRedis;
 
     // try {
      
