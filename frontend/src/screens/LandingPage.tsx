@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import Login from "../components/Login";
 import Signup from "../components/Signup";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faChessBoard } from "@fortawesome/free-solid-svg-icons";
+import { faArrowRight, faChessBoard, faChessKing, faMessage, faTowerBroadcast } from "@fortawesome/free-solid-svg-icons";
 
 export const LandingPage = () => {
   const navigate = useNavigate();
@@ -37,109 +37,233 @@ export const LandingPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Top Bar */}
-      <header className="bg-gray-900 text-white p-6">
-        <div className="container mx-auto flex justify-between items-center">
-          <div className="flex items-center">
-            <FontAwesomeIcon icon={faChessBoard} className="mr-2 text-blue-500 text-2xl" />
-            <h1 className="text-xl font-bold">Modern Chess Online</h1>
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">
+      {/* Enhanced Header */}
+      <header className="bg-gradient-to-r from-gray-900 to-blue-900 text-white shadow-xl">
+        <div className="container mx-auto px-4 py-5 flex flex-col md:flex-row justify-between items-center">
+          <div className="flex items-center space-x-3 mb-4 md:mb-0">
+            <FontAwesomeIcon 
+              icon={faChessBoard} 
+              className="text-3xl text-yellow-400 animate-pulse"
+            />
+            <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-yellow-400 to-yellow-200">
+              Modern Chess
+            </h1>
           </div>
-          <nav>
-            <button onClick={() => setShowLogin(true)} className="px-4 py-2 text-gray-200 hover:text-white focus:outline-none">
+          
+          <nav className="flex space-x-4">
+            <button
+              onClick={() => setShowLogin(true)}
+              className="px-4 py-2 rounded-lg hover:bg-white/10 transition-all duration-300 flex items-center"
+            >
+              <span className="mr-2">👑</span>
               Login
             </button>
-            <button onClick={() => setShowSignup(true)} className="px-4 py-2 bg-yellow-500 text-gray-900 rounded-md hover:bg-yellow-600 focus:outline-none">
-              Sign Up
+            <button
+              onClick={() => setShowSignup(true)}
+              className="px-6 py-2 bg-yellow-400 text-gray-900 rounded-lg font-semibold hover:bg-yellow-300 transform hover:scale-105 transition-all duration-300 flex items-center"
+            >
+              <span className="mr-2">🎯</span>
+              Start Playing
             </button>
           </nav>
         </div>
       </header>
 
-      <div className="container mx-auto px-4 py-12 flex flex-col md:flex-row items-center justify-center">
+      {/* Main Content */}
+      <div className="container mx-auto px-4 py-16 flex flex-col lg:flex-row items-center justify-between gap-12">
         {/* Left Section */}
-        <div className="text-center md:text-left md:w-1/2 p-6">
-          <h1 className="text-4xl md:text-5xl font-bold text-gray-800 mb-6">
-            Experience Chess Like Never Before
+        <div className="flex-1 space-y-8">
+          <h1 className="text-4xl md:text-5xl font-bold text-gray-800 leading-tight">
+            Master the Game of<br/>
+            <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              Kings & Queens
+            </span>
           </h1>
-          <p className="text-gray-600 text-lg mb-8">
-            Join our vibrant community and dive into the world of online chess. Whether you're looking for a casual game or a serious challenge, you'll find your perfect match here.
+          
+          <p className="text-lg text-gray-600 md:text-xl leading-relaxed">
+            Join millions of players worldwide in the ultimate chess experience. 
+            <span className="block mt-2 font-semibold text-blue-600">
+              Play, learn, and compete in real-time matches!
+            </span>
           </p>
-          <div className="flex justify-center md:justify-start">
+
+          <div className="flex space-x-4">
             <button
               onClick={() => setShowSignup(true)}
-              className="px-8 py-3 bg-blue-600 text-white rounded-lg text-lg font-semibold hover:bg-blue-700 transition duration-300"
+              className="px-8 py-4 bg-blue-600 text-white rounded-xl text-lg font-bold hover:bg-blue-700 transition-all duration-300 shadow-lg hover:shadow-xl flex items-center"
             >
-              Get Started Now
+              <FontAwesomeIcon icon={faChessKing} className="mr-2" />
+              Get Started - It's Free
             </button>
+          </div>
+
+          {/* Stats Banner */}
+          <div className="bg-white rounded-xl p-6 shadow-lg mt-8">
+            <div className="grid grid-cols-3 gap-4 text-center">
+              <div className="border-r border-gray-200">
+                <div className="text-3xl font-bold text-blue-600">1M+</div>
+                <div className="text-gray-600 text-sm">Active Players</div>
+              </div>
+              <div className="border-r border-gray-200">
+                <div className="text-3xl font-bold text-purple-600">500K+</div>
+                <div className="text-gray-600 text-sm">Daily Matches</div>
+              </div>
+              <div>
+                <div className="text-3xl font-bold text-green-600">99.9%</div>
+                <div className="text-gray-600 text-sm">Uptime</div>
+              </div>
+            </div>
           </div>
         </div>
 
         {/* Right Section */}
-        <div className="md:w-1/2 flex flex-col items-center p-6">
-          <img
-            src={"/chessBoard.png.webp"}
-            alt="Chess Board"
-            className="w-full max-w-md rounded-xl shadow-lg mb-8"
-          />
+        <div className="flex-1 w-full max-w-2xl">
+          {/* Interactive Chess Demo */}
+          <div className="relative bg-white rounded-2xl shadow-2xl overflow-hidden border-8 border-gray-800">
+            <img
+              src="/3d-chess-board.png"
+              alt="Interactive Chess"
+              className="w-full h-auto hover:scale-105 transition-transform duration-500 cursor-pointer"
+            />
+            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-6">
+              <h3 className="text-white text-xl font-bold mb-2">Live Match Preview</h3>
+              <div className="flex items-center space-x-2">
+                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                <span className="text-gray-200">12 moves played</span>
+              </div>
+            </div>
+          </div>
 
           {/* Ongoing Games Section */}
-          <div className="w-full">
-            <h2 className="text-2xl font-semibold text-gray-700 mb-4 text-center">Spectate Ongoing Games</h2>
+          <div className="mt-12">
+            <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+              <FontAwesomeIcon icon={faTowerBroadcast} className="mr-2 text-purple-600" />
+              Live Matches
+            </h2>
+            
             {ongoingGames.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid gap-4">
                 {ongoingGames.map((game) => (
                   <div
                     key={game.id}
-                    className="bg-white border border-gray-200 rounded-md p-4 shadow-sm hover:shadow-md transition-shadow duration-300 cursor-pointer"
+                    className="group relative bg-white rounded-xl p-4 shadow-md hover:shadow-lg transition-all duration-300 cursor-pointer border-l-4 border-blue-500"
                     onClick={() => joinSpectator(game.id)}
                   >
-                    <h3 className="font-semibold text-gray-800">Game {game.id}</h3>
-                    <p className="text-sm text-gray-500">Click to spectate</p>
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <h3 className="font-semibold text-gray-800">Match #{game.id}</h3>
+                        <div className="flex items-center space-x-2 mt-2">
+                          <span className="px-2 py-1 bg-green-100 text-green-800 text-sm rounded">
+                            Rating: 1600 vs 1550
+                          </span>
+                          <span className="text-sm text-gray-500">15 moves</span>
+                        </div>
+                      </div>
+                      <div className="text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <FontAwesomeIcon icon={faArrowRight} />
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-gray-600 text-center">No ongoing games to spectate at the moment.</p>
+              <div className="text-center p-8 bg-white rounded-xl shadow-md">
+                <div className="text-gray-500 mb-4">🎲 No live matches available</div>
+                <button 
+                  onClick={() => setShowSignup(true)}
+                  className="text-blue-600 hover:underline"
+                >
+                  Start the first match!
+                </button>
+              </div>
             )}
           </div>
         </div>
       </div>
 
-      {/* Footer */}
-      <footer className="bg-gray-900 text-gray-300 py-6">
-        <div className="container mx-auto text-center">
-          <p>&copy; 2025 Modern Chess Online. All rights reserved.</p>
-          <p className="mt-2 text-sm">
-            <a href="/terms" className="hover:text-white">Terms of Service</a> | <a href="/privacy" className="hover:text-white">Privacy Policy</a>
-          </p>
+      {/* Enhanced Footer */}
+      <footer className="bg-gray-900 text-gray-300 mt-24 py-12 border-t border-gray-800">
+        <div className="container mx-auto px-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+            <div>
+              <h3 className="text-white font-bold mb-4">Modern Chess</h3>
+              <p className="text-sm">Where strategy meets community</p>
+            </div>
+            <div>
+              <h4 className="text-white font-semibold mb-4">Play</h4>
+              <ul className="space-y-2 text-sm">
+                <li><a href="#" className="hover:text-white">Quick Match</a></li>
+                <li><a href="#" className="hover:text-white">Tournaments</a></li>
+                <li><a href="#" className="hover:text-white">Puzzles</a></li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="text-white font-semibold mb-4">Learn</h4>
+              <ul className="space-y-2 text-sm">
+                <li><a href="#" className="hover:text-white">Lessons</a></li>
+                <li><a href="#" className="hover:text-white">Analysis</a></li>
+                <li><a href="#" className="hover:text-white">Blog</a></li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="text-white font-semibold mb-4">Connect</h4>
+              <div className="flex space-x-4">
+                <a href="#" className="hover:text-white"><FontAwesomeIcon icon={faMessage} /></a>
+                <a href="#" className="hover:text-white"><FontAwesomeIcon icon={faMessage} /></a>
+                <a href="#" className="hover:text-white"><FontAwesomeIcon icon={faMessage}  /></a>
+              </div>
+            </div>
+          </div>
+          <div className="border-t border-gray-800 mt-8 pt-8 text-center text-sm">
+            <p>&copy; {new Date().getFullYear()} Modern Chess. All rights reserved.</p>
+            <div className="mt-2 space-x-4">
+              <a href="/privacy" className="hover:text-white">Privacy Policy</a>
+              <a href="/terms" className="hover:text-white">Terms of Service</a>
+            </div>
+          </div>
         </div>
       </footer>
 
-      {/* Login Modal */}
+      {/* Enhanced Modals */}
       {showLogin && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-          <div className="bg-white p-8 rounded-lg shadow-xl max-w-md w-full">
-            <div className="flex justify-end">
-              <button className="text-red-500 hover:text-red-700 focus:outline-none" onClick={() => setShowLogin(false)}>
-                <FontAwesomeIcon icon="times" /> &times;
-              </button>
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
+            <div className="bg-gradient-to-r from-gray-900 to-blue-900 p-6">
+              <h2 className="text-2xl font-bold text-white">Welcome Back!</h2>
             </div>
-            <Login onClose={() => setShowLogin(false)} />
+            <div className="p-8">
+              <Login onClose={() => setShowLogin(false)} />
+              <div className="mt-6 text-center">
+                <button
+                  onClick={() => { setShowLogin(false); setShowSignup(true); }}
+                  className="text-blue-600 hover:underline"
+                >
+                  New here? Create account
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Signup Modal */}
       {showSignup && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-          <div className="bg-white p-8 rounded-lg shadow-xl max-w-md w-full">
-            <div className="flex justify-end">
-              <button className="text-red-500 hover:text-red-700 focus:outline-none" onClick={() => setShowSignup(false)}>
-                &times;
-              </button>
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
+            <div className="bg-gradient-to-r from-purple-900 to-blue-900 p-6">
+              <h2 className="text-2xl font-bold text-white">Join the Community!</h2>
             </div>
-            <Signup onClose={() => setShowSignup(false)}/>
+            <div className="p-8">
+              <Signup onClose={() => setShowSignup(false)} />
+              <div className="mt-6 text-center">
+                <button
+                  onClick={() => { setShowSignup(false); setShowLogin(true); }}
+                  className="text-blue-600 hover:underline"
+                >
+                  Already have an account? Login
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
