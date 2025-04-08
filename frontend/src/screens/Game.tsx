@@ -3,7 +3,7 @@ import { Chessboard } from "react-chessboard";
 import { Chess } from "chess.js";
 import { useSocket } from "../hooks/useSocket";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faPaperPlane } from "@fortawesome/free-solid-svg-icons";
+import { faPaperPlane, faTimes } from "@fortawesome/free-solid-svg-icons";
 import toast, { Toaster } from "react-hot-toast";
 import { ChatComponent } from "../components/ChatComponent";
 import { SidebarComponent } from "../components/SidebarComponent";
@@ -19,24 +19,32 @@ const mockPlayers = {
   white: { name: "Alice", rating: 1780, avatar: "https://avatar.iran.liara.run/public/41" },
   black: { name: "Bob", rating: 1820, avatar: "https://avatar.iran.liara.run/public/42" },
 };
-
+// const boardRef = useRef<HTMLDivElement>(null);
 export const Game = ({params}:any) => {
+  // const [searchParams] = useSearchParams();
   const [searchParams] = useSearchParams();
-  const userId = searchParams.get("userId");
-  if(!userId){
-    console.log("No userId found. Please login first.");
-    return ;
-  }
+  const userId = searchParams.get("userId") || '';
   const [game, setGame] = useState(new Chess());
   const [fen, setFen] = useState("start");
   const [started, setStarted] = useState(false);
   const [moves, setMoves] = useState<Move[]>([]);
   const [playerColor, setPlayerColor] = useState<"white" | "black">("white");
   const [turn, setTurn] = useState<"white" | "black">("white");
-  const { socket, messages,sendMessage } = useSocket(userId);
+  const { socket, messages, sendMessage } = useSocket(userId);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isWaiting, setIsWaiting] = useState(false);
+  const [resetTimers, setResetTimers] = useState(false);
   const lastMessageRef = useRef<any>(null);
+  const boardRef = useRef<HTMLDivElement>(null);
+
+  const handleTimeOut = (color: "white" | "black") => {
+    sendMessage(JSON.stringify({
+      type: 'GAME_OVER',
+      winner: color === "white" ? "black" : "white",
+      reason: 'timeout'
+    }));
+    toast.success(`${color === "white" ? "Black" : "White"} wins by timeout!`);
+  };
 
   useEffect(() => {
     if (messages.length === 0) return;
@@ -53,14 +61,19 @@ export const Game = ({params}:any) => {
         setPlayerColor(message.color);
         setGame(new Chess(message.fen));
         setMoves(parsePGNToMoves(message.moves));
+        setResetTimers(true);
+        setTimeout(() => setResetTimers(false), 100);
         toast.success("Game started!");
         break;
+
       case 'GAME_RESTORED':
         setStarted(true);
         setPlayerColor(message.color);
         setGame(new Chess(message.fen));
         setFen(message.fen);
         setMoves(parsePGNToMoves(message.moves));
+        setResetTimers(true);
+        setTimeout(() => setResetTimers(false), 100);
         toast("Game restored");
         break;
       case 'GAME_UPDATE':
@@ -132,13 +145,17 @@ export const Game = ({params}:any) => {
         setStarted(false);
         toast.success("Game over!");
         break;
-      case 'GAME_TERMINATED':
-         setStarted(false);
-         setIsWaiting(false);
-         setGame(new Chess());
-         setFen("start");
-         toast.success(`Game stopped successfully ${message.winnerId}`,{duration: 6000});
-         break;
+        case 'GAME_TERMINATED':
+          setStarted(false);
+          setIsWaiting(false);
+          setGame(new Chess());
+          setFen("start");
+          setResetTimers(true);
+          setTimeout(() => setResetTimers(false), 100);
+          toast.success(message.type === 'GAME_COMPLETED' 
+            ? `Game Over! ${message.winner} wins!`
+            : `Game stopped successfully ${message.winnerId}`);
+          break;
     }
   }, [messages]);
 
@@ -159,100 +176,148 @@ export const Game = ({params}:any) => {
 
   return (
     <>
-       <Toaster
-        position="top-right"
+      <Toaster
+        position="top-center"
         toastOptions={{
           className: 'font-sans',
           style: {
             padding: '16px',
             color: '#1f2937',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
           },
         }}
       />
-    <header className="bg-gray-900 text-white p-4 flex justify-between items-center">
-      <TopBarComponent />
-      // Add this in your component JSX (below TopBarComponent in header)
-<header className="bg-gray-900 text-white p-4 flex justify-between items-center">
-  <TopBarComponent />
-  {started && (
-    <button
-      onClick={() => {
-        if (window.confirm("Are you sure you want to stop the game?")) {
-          sendMessage(JSON.stringify({ 
-            type: 'STOP_GAME', 
-            userId: userId,
-            reason: 'player_resignation'
-          }));
-          toast.loading("Stopping game...");
-        }
-      }}
-      disabled={!started}
-      className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg flex items-center gap-2"
-    >
-      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-        <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-      </svg>
-      Stop Game
-    </button>
-  )}
-</header>
-    </header>
-    <div className="min-h-screen bg-gray-50 font-sans">
-      <div className="container mx-auto px-4 py-8 flex gap-6">
-        <SidebarComponent moves={[]} playerColor={playerColor} />
+      
+      <header className="bg-gray-800 text-white p-4 flex justify-between items-center sticky top-0 z-50">
+        <TopBarComponent />
+        {started && (
+          <button
+            onClick={() => {
+              if (window.confirm("Are you sure you want to resign?")) {
+                sendMessage(JSON.stringify({ 
+                  type: 'STOP_GAME', 
+                  userId: userId,
+                  reason: 'player_resignation'
+                }));
+                toast.loading("Resigning...");
+              }
+            }}
+            className="bg-red-500 hover:bg-red-600 px-4 py-2 rounded-lg flex items-center gap-2 transition-all"
+          >
+            <FontAwesomeIcon icon={faTimes} />
+            <span className="hidden sm:inline">Resign</span>
+          </button>
+        )}
+      </header>
 
-        <main className="flex-1">
-          <div className="bg-white rounded-xl shadow-lg p-6 flex flex-col md:flex-row gap-8">
-            <div className="flex-1">
-              <div className="mb-6 flex justify-between items-center bg-gray-100 p-4 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <img src={mockPlayers.white.avatar} className="w-12 h-12 rounded-full" />
-                  <TimerComponent />
+      <div className="min-h-screen bg-gray-50 font-sans">
+        <div className="container mx-auto px-4 py-8 flex gap-6 flex-col lg:flex-row">
+          <SidebarComponent moves={moves} playerColor={playerColor} />
+
+          <main className="flex-1 order-first lg:order-none">
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <div className="mb-6 flex flex-col sm:flex-row justify-between items-center bg-gray-100 p-4 rounded-lg space-y-4 sm:space-y-0">
+                <div className="flex items-center gap-3 bg-white p-3 rounded-lg shadow-sm w-full sm:w-auto justify-between">
+                  <div className="flex items-center gap-3">
+                    <img src={mockPlayers.white.avatar} className="w-10 h-10 rounded-full border-2 border-white shadow" />
+                    <div className="text-sm">
+                      <p className="font-semibold">{mockPlayers.white.name}</p>
+                      <p className="text-gray-600">Rating: {mockPlayers.white.rating}</p>
+                    </div>
+                  </div>
+                  <TimerComponent 
+                    color="white"
+                    isActive={started}
+                    isCurrentTurn={turn === 'white'}
+                    onTimeOut={handleTimeOut}
+                    reset={resetTimers}
+                    className="ml-2"
+                  />
                 </div>
-                <div className="text-2xl font-bold text-gray-600">VS</div>
-                <div className="flex items-center gap-3">
-                  <TimerComponent  />
-                  <img src={mockPlayers.black.avatar} className="w-12 h-12 rounded-full" />
+
+                <div className="text-2xl font-bold text-gray-600 hidden sm:block">VS</div>
+
+                <div className="flex items-center gap-3 bg-white p-3 rounded-lg shadow-sm w-full sm:w-auto justify-between">
+                <TimerComponent
+                    color="black"
+                    isActive={started}
+                    isCurrentTurn={turn === 'black'}
+                    onTimeOut={handleTimeOut}
+                    reset={resetTimers}
+                    className="mr-2"
+                  />
+                  <div className="flex items-center gap-3">
+                    <div className="text-sm text-right">
+                      <p className="font-semibold">{mockPlayers.black.name}</p>
+                      <p className="text-gray-600">Rating: {mockPlayers.black.rating}</p>
+                    </div>
+                    <img src={mockPlayers.black.avatar} className="w-10 h-10 rounded-full border-2 border-white shadow" />
+                  </div>
                 </div>
               </div>
 
-              <div className="bg-gray-100 p-4 rounded-xl">
-                <Chessboard
-                  position={fen}
-                  onPieceDrop={(s, t) => handleMove({ from: s, to: t })}
-                  boardWidth={480}
-                  boardStyle={{ borderRadius: "8px" }}
-                  customArrows={[]}
-                  orientation={playerColor}
-                  areArrowsAllowed
-                />
+              <div className="bg-chess-pattern bg-gray-100 p-4 rounded-xl relative">
+                <div ref={boardRef} className="max-w-full mx-auto">
+                  <Chessboard
+                    position={fen}
+                    onPieceDrop={(s, t) => handleMove({ from: s, to: t })}
+                    boardWidth={Math.min(640, boardRef.current?.offsetWidth || 480)}
+                    boardStyle={{
+                      borderRadius: "8px",
+                      boxShadow: "0 4px 12px rgba(0,0,0,0.1)"
+                    }}
+                    customDarkSquareStyle={{ backgroundColor: '#779556' }}
+                    customLightSquareStyle={{ backgroundColor: '#ebecd0' }}
+                    customArrows={[]}
+                    orientation={playerColor}
+                    areArrowsAllowed
+                  />
+                </div>
+                
+                {!started && (
+                  <div className="mt-6 space-y-4">
+                    <button
+                      onClick={() => {
+                        sendMessage(JSON.stringify({ type: 'CREATE_GAME', userId }));
+                        toast.loading("Finding opponent...");
+                      }}
+                      className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-4 rounded-lg hover:opacity-90 transition-opacity font-semibold flex items-center justify-center gap-2"
+                      disabled={isWaiting}
+                    >
+                      {isWaiting ? (
+                        <>
+                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                          Searching...
+                        </>
+                      ) : (
+                        "Find Match"
+                      )}
+                    </button>
+                    <p className="text-center text-sm text-gray-600 mt-2">
+                      Average wait time: <span className="font-medium">15 seconds</span>
+                    </p>
+                  </div>
+                )}
               </div>
-
-              {!started && (
-                <button
-                  onClick={() => {
-                    sendMessage(JSON.stringify({ type: 'CREATE_GAME', userId }));
-                    toast.loading("Creating game...");
-                  }}
-                  className="w-full mt-6 bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700"
-                >
-                  Create Game
-                </button>
-              )}
             </div>
-          </div>
-        </main>
+          </main>
 
-        <button
-          onClick={() => setIsChatOpen(!isChatOpen)}
-          className="fixed bottom-8 right-8 bg-blue-600 text-white p-4 rounded-full shadow-lg"
-        >
-          <FontAwesomeIcon icon={faPaperPlane} />
-        </button>
-        
-        {isChatOpen && <ChatComponent />}
+          <div className={`fixed bottom-8 right-8 transition-transform ${isChatOpen ? 'translate-x-0' : 'translate-x-32'}`}>
+            <button
+              onClick={() => setIsChatOpen(!isChatOpen)}
+              className="bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700 transition-colors relative"
+            >
+              <FontAwesomeIcon icon={faPaperPlane} />
+              {!isChatOpen && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-xs w-5 h-5 rounded-full flex items-center justify-center">
+                  3
+                </span>
+              )}
+            </button>
+             {isChatOpen&&  <ChatComponent  />}
+          </div>
+        </div>
       </div>
-    </div>
     </>
   );
 };

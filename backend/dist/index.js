@@ -109,8 +109,6 @@ wss.on('connection', (ws, req) => __awaiter(void 0, void 0, void 0, function* ()
                     try {
                         const game = yield gameManager.getGame(data.userId);
                         if (game) {
-                            console.log(`game inside STOP_GAME WITH id ${game.gameId} and userId ${data.userId}`);
-                            // console.log(JSON.parse(game));
                             const result = gameManager.stopGame(game.gameId, data.userId);
                             const message = JSON.stringify({ type: 'GAME_TERMINATED', reason: data.reason, winnerId: result.winnerId });
                             broadcastToAllConnectedClients(message);
