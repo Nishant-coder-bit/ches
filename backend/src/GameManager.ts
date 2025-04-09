@@ -20,7 +20,21 @@ export class GameManager {
       gameId: undefined,
     };
   }
-  async stopGame(gameId: string,userId:string) {
+  async declineGame(userId:string){
+     try{
+      const waitingPlayer = this.waitingPlayers.get(userId);
+      if (waitingPlayer) {
+        waitingPlayer.close();
+        this.waitingPlayers.delete(userId);
+        await RedisClient.del(`waiting_player:${userId}`);
+      }
+    }catch(error){
+      console.error("Error in declining game:", error);
+      throw error;
+    }
+
+  }
+  async stopGame(gameId: string,userId:string): Promise<any> {
     console.log(`insid stopGame with ${gameId} and ${userId}`);
     const game = this.activeGames.get(gameId);
      console.log("inside stopGame",game);
@@ -35,7 +49,7 @@ export class GameManager {
         select: { player1Id: true, player2Id: true }
       });
       console.log("gameToBeStopped",gameToBeStopped);
-      if (!gameToBeStopped) return;
+      if (!gameToBeStopped) return{ status: 'not found',winnerId: null };
       await RedisClient.del(`user:${gameToBeStopped.player1Id}:game`);
       await RedisClient.del(`user:${gameToBeStopped.player2Id}:game`);
       const winnerId = gameToBeStopped.player1Id === userId ? gameToBeStopped.player2Id : gameToBeStopped.player1Id;

@@ -35,6 +35,22 @@ class GameManager {
             };
         });
     }
+    declineGame(userId) {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                const waitingPlayer = this.waitingPlayers.get(userId);
+                if (waitingPlayer) {
+                    waitingPlayer.close();
+                    this.waitingPlayers.delete(userId);
+                    yield RedisClient_1.default.del(`waiting_player:${userId}`);
+                }
+            }
+            catch (error) {
+                console.error("Error in declining game:", error);
+                throw error;
+            }
+        });
+    }
     stopGame(gameId, userId) {
         return __awaiter(this, void 0, void 0, function* () {
             console.log(`insid stopGame with ${gameId} and ${userId}`);
@@ -52,7 +68,7 @@ class GameManager {
                 });
                 console.log("gameToBeStopped", gameToBeStopped);
                 if (!gameToBeStopped)
-                    return;
+                    return { status: 'not found', winnerId: null };
                 yield RedisClient_1.default.del(`user:${gameToBeStopped.player1Id}:game`);
                 yield RedisClient_1.default.del(`user:${gameToBeStopped.player2Id}:game`);
                 const winnerId = gameToBeStopped.player1Id === userId ? gameToBeStopped.player2Id : gameToBeStopped.player1Id;

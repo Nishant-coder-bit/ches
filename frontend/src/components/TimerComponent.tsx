@@ -2,11 +2,11 @@ import { useEffect, useCallback, useRef, useState } from "react";
 
 interface TimerProps {
   color: "white" | "black";
-  isActive: boolean;
-  isCurrentTurn: boolean;
+  isActive: boolean; // Whether the game is active
+  isCurrentTurn: boolean; // Whether it's this player's turn
   className?: string;
   onTimeOut: (color: "white" | "black") => void;
-  reset?: boolean;
+  reset?: boolean; // Reset the timer to 10 minutes
 }
 
 export const TimerComponent = ({
@@ -17,19 +17,21 @@ export const TimerComponent = ({
   onTimeOut,
   reset
 }: TimerProps) => {
-  const [time, setTime] = useState<number>(300); // 5 minutes in seconds
+  const [time, setTime] = useState<number>(600); // 10 minutes in seconds
   const timerInterval = useRef<NodeJS.Timeout | null>(null);
   const warningSound = useRef<HTMLAudioElement | null>(null);
 
+  // Format time to MM:SS
   const formatTime = useCallback((seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   }, []);
 
+  // Start the timer
   const startTimer = useCallback(() => {
-    if (!isActive || !isCurrentTurn) return;
-    
+    if (!isActive || !isCurrentTurn || timerInterval.current) return;
+
     timerInterval.current = setInterval(() => {
       setTime(prev => {
         if (prev <= 0) {
@@ -42,6 +44,7 @@ export const TimerComponent = ({
     }, 1000);
   }, [isActive, isCurrentTurn, color, onTimeOut]);
 
+  // Stop the timer
   const stopTimer = useCallback(() => {
     if (timerInterval.current) {
       clearInterval(timerInterval.current);
@@ -51,14 +54,13 @@ export const TimerComponent = ({
 
   useEffect(() => {
     // Handle timer activation/state changes
-    if (isActive && isCurrentTurn) {
+    if (isCurrentTurn) {
       startTimer();
     } else {
       stopTimer();
     }
-    
     return () => stopTimer();
-  }, [isActive, isCurrentTurn, startTimer, stopTimer]);
+  }, [isCurrentTurn, startTimer, stopTimer]);
 
   useEffect(() => {
     // Play warning sound when time is low
@@ -66,7 +68,6 @@ export const TimerComponent = ({
       warningSound.current = new Audio('/sounds/time-warning.mp3');
       warningSound.current.play();
     }
-    
     return () => {
       if (warningSound.current) {
         warningSound.current.pause();
@@ -78,7 +79,7 @@ export const TimerComponent = ({
   useEffect(() => {
     // Reset timer when reset prop changes
     if (reset) {
-      setTime(300);
+      setTime(600); // Reset to 10 minutes
       stopTimer();
     }
   }, [reset, stopTimer]);

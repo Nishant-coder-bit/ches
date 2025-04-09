@@ -76,13 +76,12 @@ wss.on('connection', (ws, req) => __awaiter(void 0, void 0, void 0, function* ()
                         }
                     }
                     catch (error) {
+                        console.error('Error creating game:', error);
                         ws.send(JSON.stringify({ type: 'ERROR', message: 'Failed to create game' }));
                     }
                     break;
                 case 'JOIN_GAME':
                     try {
-                        // const gameContext = await SessionService.validateGameToken(data.token);
-                        // if (gameContext) {
                         const response = yield gameManager.joinGame(ws, data.userId);
                         const broadcastData = (JSON.stringify({ type: 'GAME_JOINED', gameId: response.gameId, status: response.status, color: response.color }));
                         broadcastToAllConnectedClients(broadcastData, ws);
@@ -109,7 +108,7 @@ wss.on('connection', (ws, req) => __awaiter(void 0, void 0, void 0, function* ()
                     try {
                         const game = yield gameManager.getGame(data.userId);
                         if (game) {
-                            const result = gameManager.stopGame(game.gameId, data.userId);
+                            const result = yield gameManager.stopGame(game.gameId, data.userId);
                             const message = JSON.stringify({ type: 'GAME_TERMINATED', reason: data.reason, winnerId: result.winnerId });
                             broadcastToAllConnectedClients(message);
                         }
@@ -117,6 +116,17 @@ wss.on('connection', (ws, req) => __awaiter(void 0, void 0, void 0, function* ()
                     catch (error) {
                         console.error('Error stopping game:', error);
                         ws.send(JSON.stringify({ type: 'ERROR', message: 'Failed to stop game' }));
+                    }
+                    break;
+                case 'DECLINE_GAME':
+                    try {
+                        const result = gameManager.declineGame(data.userId);
+                        const message = JSON.stringify({ type: 'GAME_DECLINED', message: 'Game declined Successfully' });
+                        broadcastToAllConnectedClients(message);
+                    }
+                    catch (error) {
+                        console.error('Error declining game:', error);
+                        ws.send(JSON.stringify({ type: 'ERROR', message: 'Failed to decline game' }));
                     }
                     break;
             }

@@ -60,10 +60,43 @@ export const Game = ({params}:any) => {
         setStarted(true);
         setPlayerColor(message.color);
         setGame(new Chess(message.fen));
+        setIsWaiting(false);
         setMoves(parsePGNToMoves(message.moves));
         setResetTimers(true);
         setTimeout(() => setResetTimers(false), 100);
         toast.success("Game started!");
+        break;
+      case 'MESSAGE_FROM_QUEUE':
+        toast.custom((t) => (
+          <div className="bg-white p-4 rounded-lg shadow-lg flex flex-col gap-3">
+            <p className="text-gray-800">New game invite received!</p>
+            <div className="flex gap-2">
+              <button
+                className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+                onClick={() => {
+                  sendMessage(JSON.stringify({ type: 'JOIN_GAME', userId }));
+                  toast.dismiss(t.id);
+                }}
+              >
+                Accept
+              </button>
+              <button
+                className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+                onClick={() => {
+                  // sendMessage(JSON.stringify({ type: 'DECLINE_GAME', userId }));
+                  toast.dismiss(t.id);
+                }}
+              >
+                Decline
+              </button>
+            </div>
+          </div>
+        
+        ), { duration: 3000 });
+        break;
+
+      case 'GAME_JOINED':
+        console.log("Game joined successfully");
         break;
 
       case 'GAME_RESTORED':
@@ -96,7 +129,7 @@ export const Game = ({params}:any) => {
         updatedGame.move(message.lastMove);
         setGame(updatedGame);
         setFen(updatedGame.fen());
-        setMoves((prev) => [...prev, message.payload]);
+        setMoves((prev) => [...prev, message.lastMove]);
         setTurn(message.color === "white" ? "white" : "black");
         break;
 
@@ -130,7 +163,7 @@ export const Game = ({params}:any) => {
               <button
                 className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
                 onClick={() => {
-                  sendMessage(JSON.stringify({ type: 'DECLINE_GAME', userId }));
+                  // sendMessage(JSON.stringify({ type: 'DECLINE_GAME', userId }));
                   toast.dismiss(t.id);
                 }}
               >
@@ -138,7 +171,7 @@ export const Game = ({params}:any) => {
               </button>
             </div>
           </div>
-        ), { duration: 60000 });
+        ), { duration: 3000 });
         break;
 
       case GAME_OVER:
@@ -155,7 +188,12 @@ export const Game = ({params}:any) => {
           toast.success(message.type === 'GAME_COMPLETED' 
             ? `Game Over! ${message.winner} wins!`
             : `Game stopped successfully ${message.winnerId}`);
+          
           break;
+
+          case 'ERROR':
+            toast.error(message.message);
+            break;
     }
   }, [messages]);
 
@@ -199,7 +237,7 @@ export const Game = ({params}:any) => {
                   userId: userId,
                   reason: 'player_resignation'
                 }));
-                toast.loading("Resigning...");
+                toast.loading("Resigning...",{duration: 500});
               }
             }}
             className="bg-red-500 hover:bg-red-600 px-4 py-2 rounded-lg flex items-center gap-2 transition-all"
@@ -278,8 +316,26 @@ export const Game = ({params}:any) => {
                   <div className="mt-6 space-y-4">
                     <button
                       onClick={() => {
+                        
                         sendMessage(JSON.stringify({ type: 'CREATE_GAME', userId }));
-                        toast.loading("Finding opponent...");
+                        setIsWaiting(true);
+                        // toast.loading("Finding opponent...");
+                        // toast.custom((t) => (
+                        //   <div className="bg-white p-4 rounded-lg shadow-lg flex flex-col gap-3">
+                        //     <p className="text-gray-800">Searching for an opponent...</p>
+                        //     <div className="flex gap-2">
+                        //       <button
+                        //         className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+                        //         onClick={() => {
+                        //           sendMessage(JSON.stringify({ type: 'STOP_GAME', userId }));
+                        //           toast.dismiss(t.id);
+                        //         }}
+                        //       >
+                        //         Cancel
+                        //       </button>
+                        //     </div>
+                        //   </div>
+                        // ), { duration: 3000 });
                       }}
                       className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-4 rounded-lg hover:opacity-90 transition-opacity font-semibold flex items-center justify-center gap-2"
                       disabled={isWaiting}
@@ -290,7 +346,10 @@ export const Game = ({params}:any) => {
                           Searching...
                         </>
                       ) : (
-                        "Find Match"
+                         
+                            "Start New Game"
+                    
+                       
                       )}
                     </button>
                     <p className="text-center text-sm text-gray-600 mt-2">
