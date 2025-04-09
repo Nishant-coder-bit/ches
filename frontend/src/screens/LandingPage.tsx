@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import Login from "../components/Login";
 import Signup from "../components/Signup";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faArrowRight, faChessBoard, faChessKing, faMessage, faTowerBroadcast } from "@fortawesome/free-solid-svg-icons";
+import { faArrowRight, faChessBoard, faChessKing, faMessage, faTimes, faTowerBroadcast } from "@fortawesome/free-solid-svg-icons";
 
 export const LandingPage = () => {
   const navigate = useNavigate();
@@ -89,6 +89,7 @@ export const LandingPage = () => {
           </p>
 
           <div className="flex space-x-4">
+        
             <button
               onClick={() => setShowSignup(true)}
               className="px-8 py-4 bg-blue-600 text-white rounded-xl text-lg font-bold hover:bg-blue-700 transition-all duration-300 shadow-lg hover:shadow-xl flex items-center"

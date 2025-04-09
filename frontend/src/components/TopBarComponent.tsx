@@ -16,14 +16,13 @@ const mockUser = {
   avatar: "https://avatar.iran.liara.run/public/38",
 };
 
-export const TopBarComponent = () => {
+export const TopBarComponent = ({userId}:{userId:string}) => {
   const navigate = useNavigate();
   const [isSpectator, setIsSpectator] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("gameId");
+    localStorage.removeItem(`${userId}+token`);
     navigate("/");
     window.location.reload();
   };

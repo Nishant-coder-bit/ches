@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faSignInAlt } from "@fortawesome/free-solid-svg-icons";
+import { faSignInAlt, faTimes } from "@fortawesome/free-solid-svg-icons";
 
 const Login = ({ onClose }: { onClose: () => void }) => {
   const [email, setEmail] = useState("");
@@ -49,6 +49,13 @@ const Login = ({ onClose }: { onClose: () => void }) => {
 
   return (
     <div className="rounded-lg p-6 bg-white shadow-md">
+          <button
+        onClick={onClose}
+        className="absolute top-2 right-2 p-2 text-gray-500 hover:text-gray-700 transition-colors"
+        aria-label="Close"
+      >
+        <FontAwesomeIcon icon={faTimes} className="text-xl" />
+      </button>
       <div className="text-center mb-6">
         <FontAwesomeIcon icon={faSignInAlt} className="text-blue-500 text-4xl mb-4" />
         <h1 className="text-2xl font-bold text-gray-800">Welcome Back</h1>
